@@ -36,7 +36,6 @@
 
 eip=0x8048757
 
-
 3.
 
 run this commands:
@@ -48,7 +47,6 @@ run this commands:
 
 function: `_start`
 
-<div dir="auto">
 
 ```
 
@@ -64,8 +62,6 @@ function: `_start`
 
 ```
 
-</div>
-
 
 fault in `mov    0x24(%esp),%eax` instruction.
 
@@ -75,9 +71,9 @@ fault in `mov    0x24(%esp),%eax` instruction.
 we use `grep -r "_start"` command to find location of _start function in /pintos/src/lib.
 function defined in the user/entry.c.
 
-<div dir="auto">
 
 ```
+
 #include <syscall.h>
 
 int main (int, char *[]);
@@ -89,9 +85,7 @@ _start (int argc, char *argv[])
   exit (main (argc, argv));
 }
 
-
 ```
-</div>
 
 
 `sub    $0x1c,%esp`
