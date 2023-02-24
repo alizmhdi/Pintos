@@ -5,13 +5,13 @@
 -----
 > نام و آدرس پست الکترونیکی اعضای گروه را در این قسمت بنویسید.
 
-نام و نام خانوادگی <example@example.com>
+سروش شرافت 
 
-نام و نام خانوادگی <example@example.com> 
+علی‌پاشامنتصری 
 
-نام و نام خانوادگی <example@example.com> 
+کیان بهادری  
 
-نام و نام خانوادگی <example@example.com> 
+مهدی علیزاده alizademhdi@gmail.com 
 
 مقدمات
 ----------
@@ -27,45 +27,142 @@
 
 ## یافتن دستور معیوب
 
-۱.
+1.
 
-۲.
+0xc0000008
 
-۳.
 
-۴.
+2.
 
-۵.
+eip=0x8048757
+
+
+3.
+
+run this commands:
+
+`objdump -d do-nothing`
+
+`objdump -d do-nothing | grep 8048757`
+
+
+function: `_start`
+
+<div dir="auto">
+
+```
+
+08048754 <_start>:
+ 8048754:       83 ec 1c                sub    $0x1c,%esp
+ 8048757:       8b 44 24 24             mov    0x24(%esp),%eax
+ 804875b:       89 44 24 04             mov    %eax,0x4(%esp)
+ 804875f:       8b 44 24 20             mov    0x20(%esp),%eax
+ 8048763:       89 04 24                mov    %eax,(%esp)
+ 8048766:       e8 35 f9 ff ff          call   80480a0 <main>
+ 804876b:       89 04 24                mov    %eax,(%esp)
+ 804876e:       e8 49 1b 00 00          call   804a2bc <exit>
+
+```
+
+</div>
+
+
+fault in `mov    0x24(%esp),%eax` instruction.
+
+
+4.
+
+we use `grep -r "_start"` command to find location of _start function in /pintos/src/lib.
+function defined in the user/entry.c.
+
+<div dir="auto">
+
+```
+#include <syscall.h>
+
+int main (int, char *[]);
+void _start (int argc, char *argv[]);
+
+void
+_start (int argc, char *argv[])
+{
+  exit (main (argc, argv));
+}
+
+
+```
+</div>
+
+
+`sub    $0x1c,%esp`
+This instruction keeps as much free space on the stack as needed and does so by decrementing the stack pointer.
+Here, 8 bytes are required to place each argv and argc, as well as 4 bytes for stack_align, which requires a total of 0x16 memory houses.
+
+
+`mov    0x24(%esp),%eax`
+
+`mov    %eax,0x4(%esp)`
+
+These instruction put the value of ‍`argv‍` in the stack to call the main function whose inputs are `argv`, `argc`.
+Note that because in 8086 it is not possible to transfer between two houses of memory, the auxiliary register `eax` is used for transfer.
+
+
+`mov    0x20(%esp),%eax`
+
+`mov    %eax,(%esp)`
+
+These instructions do the same thing as above for `argc`.
+
+
+`call   80480a0 <main>`
+
+This instruction puts the return address on the stack and then executes the main function.
+
+
+`mov    %eax,(%esp)`
+
+After returning, the output of the main function is located in the ‍`eax‍` register, and using this command, we place it in the stack to call the exit function.
+
+
+`call   804a2bc <exit>`
+
+This instruction puts the return address on the stack and then executes the exit function.
+
+
+5.
+
+Before calling the `_start` function, the arguments argv and argc must be placed in the stack.
+But here, because the values ​​of argv and argc are not placed in the stack before the `_start` function is called, so when executing the instruction `mov 0x24(%esp),%eax` the value of `0x24(%esp)` is not in the user's access range and we get a `rights violation error reading page in user context` error.
 
 ## به سوی crash
 
-۶.
+6.
 
-۷.
+7.
 
-۸.
+8.
 
-۹.
+9.
 
-۱۰.
+10.
 
-۱۱.
+11.
 
-۱۲.
+12.
 
-۱۳.
+13.
 
 
 ## دیباگ
 
-۱۴.
+14.
 
-۱۵.
+15.
 
-۱۶.
+16.
 
-۱۷.
+17.
 
-۱۸.
+18.
 
-۱۹.
+19.
