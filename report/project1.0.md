@@ -427,12 +427,35 @@ gs             0x23     35
 
 14.
 
+we add `if_.esp -= 36;` into `start_process` function after calling `load`.
+This is because the total amount of data we put on the stack before calling the start function is 36 bytes.
+(11 byte: filename, 9 byte: stack align, 4 byte: argv[0], 4 byte: argv, 4 byte: argc, 4 byte: return address)
+
+
 15.
+
+answer: 12
+
+As mentioned in the reference doc, in pintos, the stack pointer must be aligned in 16 bytes (4 bytes of memory).
+So the stack pointer, which always points to one house before the last house used, has a remainder of 12 when divided by 16.
+
 
 16.
 
+`0xbfffff98:     0x00000001      0x000000a2`
+
 17.
 
+```
+args[0] = 0x00000001
+
+args[1] = 0x000000a2
+```
+These values ​​are the same as above.
+
+
 18.
+
+
 
 19.
