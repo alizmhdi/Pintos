@@ -447,15 +447,36 @@ So the stack pointer, which always points to one house before the last house use
 17.
 
 ```
+
 args[0] = 0x00000001
 
 args[1] = 0x000000a2
+
 ```
 These values ​​are the same as above.
 
 
 18.
 
+After the ‍`process_execute` function is executed, the address of the thread created for the execution of the user program is given with the `process_wait` function to wait until the end of its execution.
+To do this, a `semaphore` is defined, which initially has a value of zero. now the `process_wait` function tries to decrease the value of the `semaphore`, but because its initial value is zero, it cannot do this, and this means that the execution of that thread has not finished and the kernel must wait.
+Now, when the `process_exit` function is executed, which means that the thread's work is finished, the `semaphore` value increases, and in this case, the `process_wait` function can decrease its value, and this means the end of the thread work.
+Note that this method will be problematic if you run several programs.
 
 
 19.
+
+thread `main`‍ has executed this function.
+
+all threads:
+
+```
+
+pintos-debug: dumplist #0: 0xc000e000 {tid = 1, status = THREAD_RUNNING, name = "main", '\000' <repeats 11 times>, stack = 0xc000edec "\375\003", priority = 31, allelem = {prev
+ = 0xc0035910 <all_list>, next = 0xc0104020}, elem = {prev = 0xc0035920 <ready_list>, next = 0xc0035928 <ready_list+8>}, pagedir = 0x0, magic = 3446325067}
+pintos-debug: dumplist #1: 0xc0104000 {tid = 2, status = THREAD_BLOCKED, name = "idle", '\000' <repeats 11 times>, stack = 0xc0104f34 "", priority = 0, allelem = {prev = 0xc000
+e020, next = 0xc010a020}, elem = {prev = 0xc0035920 <ready_list>, next = 0xc0035928 <ready_list+8>}, pagedir = 0x0, magic = 3446325067}
+pintos-debug: dumplist #2: 0xc010a000 {tid = 3, status = THREAD_READY, name = "do-nothing\000\000\000\000\000", stack = 0xc010afd4 "", priority = 31, allelem = {prev = 0xc01040
+20, next = 0xc0035918 <all_list+8>}, elem = {prev = 0xc0035920 <ready_list>, next = 0xc0035928 <ready_list+8>}, pagedir = 0x0, magic = 3446325067}
+
+```
