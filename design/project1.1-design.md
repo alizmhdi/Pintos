@@ -333,7 +333,12 @@ asm ( "assembly code"
            : input operands                   /* optional */
            : clobbered registers              /* optional */
 );
+
 ```
+
+در آخر توجه کنید که در هیچ تستی خواندن از STDERR که کاری اشتباه است چک نشده است که موجب به error شود.
+
+
 
 سوالات نظرخواهی
 ==============
