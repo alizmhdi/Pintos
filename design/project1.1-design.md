@@ -1,4 +1,4 @@
-<div dir="rtl" style="text-align: justify;">
+<div dir="rtl">
 
 # تمرین گروهی ۱.۱ - مستند طراحی
 
