@@ -54,6 +54,79 @@
 ----------------
 > در این قسمت تعریف هر یک از `struct` ها، اعضای `struct` ها، متغیرهای سراسری یا ایستا، `typedef` ها یا `enum` هایی که ای.جاد کرده‌اید یا تغییر داده‌اید را بنویسید و دلیل هر کدام را در حداکثر ۲۵ کلمه توضیح دهید.
 
+
+
+```C
+// defile this on thread.h for specify max of number of opend files.
+
+#define MAX_OPEN_FILE 1024
+
+```
+
+```C
+// defile this on thread.h for specify structure of file descriptor.
+struct FD { 
+  int id;
+  struct file * file_pointer;
+}
+
+```
+
+```C
+// defile this on syscall.c for handling access of only one thread to file at the time.
+static struct lock file_lock; 
+```
+
+```C
+
+struct thread
+{
+  ...
+#ifdef USERPROG
+  ...
+
+  // list of all the child threads
+  struct list childrens;
+
+  // status of this thread (beacause only one thread can run in a proccess)
+  struct process_status *status;
+
+  // list of all file descriptors for this thread
+  struct FD *fd[MAX_OPEN_FILE];
+
+#endif
+  ...
+};
+
+```
+
+```C
+
+struct thread_status { 
+
+    // proccess of this thread
+    pid_t pid;
+
+    int exit_code;
+
+    struct semaphore sema;
+
+    struct list_elem elem;
+
+    // we define this variable to dedicate number of threads that access to this status and use it for free space
+    // at the begining this variable set to 2 (parent anc child)
+    int ref_count;
+
+    // for locking ref_count for Avoiding race condition
+    struct lock lock; 
+
+};
+
+```
+
+
+
+
 > توضیح دهید که توصیف‌کننده‌های فایل چگونه به فایل‌های باز مربوط می‌شوند. آیا این توصیف‌کننده‌ها در کل سیستم‌عامل به‌طور یکتا مشخص می‌شوند یا فقط برای هر پردازه یکتا هستند؟
 
 برای هندل کردن این کار به ساختار thread یک لیست از FD ها اضافه می‌کنیم که هر کدام اشاره‌گر به یک فایل باز شده و همچنین شماره‌ی file descriptor آن قایل دارد.
