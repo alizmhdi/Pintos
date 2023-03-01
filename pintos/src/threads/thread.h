@@ -105,7 +105,7 @@ struct process_status {
 struct FD { 
   int id;
   struct file * pfile;
-}
+};
 
 struct thread
   {

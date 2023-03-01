@@ -78,7 +78,7 @@ syscall_exit (struct intr_frame *f, uint32_t code, struct thread* current_thread
 {
   f->eax = code;
   current_thread->tstatus->exit_code = code;
-  exit(code);
+  thread_exit();
 }
 
 
@@ -102,6 +102,6 @@ syscall_write (struct intr_frame *f, uint32_t* args, struct thread* current_thre
     putbuf (buffer, size);
     f->eax = size;
   }
-  else if (dir_from_file (current_thread->file_descriptors[fd]) == NULL)
-    f->eax = file_write (current_thread->file_descriptors[fd], buffer, size);
+  
+  f->eax = file_write (current_thread->file_descriptors[fd]->pfile, buffer, size);
 }
