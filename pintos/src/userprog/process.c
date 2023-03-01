@@ -64,7 +64,7 @@ start_process (void *file_name_)
   if_.eflags = FLAG_IF | FLAG_MBS;
   success = load (file_name, &if_.eip, &if_.esp);
 
-  if_.esp -= 36;
+  // if_.esp -= 36;
 
   /* If load failed, quit. */
   palloc_free_page (file_name);
@@ -208,6 +208,37 @@ static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
                           uint32_t read_bytes, uint32_t zero_bytes,
                           bool writable);
 
+/* Limits for filename. */
+#define MAX_ARGS 32
+#define MAX_FILENAME_SIZE 1024
+                          
+void parse_file_name (char *file_name, int *argc, char **argv);
+
+/* Parses filename into array of strings (argv). */
+void
+parse_file_name (char *file_name, int *argc, char **argv)
+{
+  int i;
+  char *c;
+  
+  char *saveptr;
+
+  c = strtok_r(file_name," ", &saveptr);	 /* Start tokenizer on filename */
+  for (i=0; c ; i++) {
+    //TODO is this necessary?
+    //if (i >= MAX_ARGS) {
+    //  exit(-1);
+    //}
+
+    argv[i] = c;
+    c = strtok_r(NULL," ", &saveptr);	/* scan for next token */
+  }
+
+  *argc = i;
+
+  return;
+}
+
 /* Loads an ELF executable from FILE_NAME into the current thread.
    Stores the executable's entry point into *EIP
    and its initial stack pointer into *ESP.
@@ -222,11 +253,19 @@ load (const char *file_name, void (**eip) (void), void **esp)
   bool success = false;
   int i;
 
+  char *file_name_copy = palloc_get_page(0); 
+  char **argv = palloc_get_page(0);
+  strlcpy(file_name_copy, file_name, PGSIZE);
+  int argc;
+  parse_file_name (file_name_copy, &argc, argv);
+
   /* Allocate and activate page directory. */
   t->pagedir = pagedir_create ();
   if (t->pagedir == NULL)
     goto done;
   process_activate ();
+
+  
 
   /* Open executable file. */
   file = filesys_open (file_name);
