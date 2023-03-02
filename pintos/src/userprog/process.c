@@ -357,6 +357,8 @@ load (const char *file_name, void (**eip) (void), void **esp)
 
  done:
   /* We arrive here whether the load is successful or not. */
+  palloc_free_page(file_name_copy);
+  palloc_free_page(argv);
   file_close (file);
   return success;
 }
@@ -477,58 +479,58 @@ setup_stack (void **esp, char *argv[], int argc)
   uint8_t *kpage;
   bool success = false;
 
-  uint8_t *stack_page_ptr = (uint8_t *) *esp;
   uint8_t *arg_address[argc];
-  uint8_t *temporary;
-  size_t arglen;
 
   kpage = palloc_get_page (PAL_USER | PAL_ZERO);
   if (kpage != NULL)
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
-      if (success)
+      if (success) {
         *esp = PHYS_BASE;
-      else
+      } else {
         palloc_free_page (kpage);
         goto setup_done;
+      }
     }
   
+  uint8_t *stack_page_ptr = (uint8_t *) *esp;
+  // size_t arglen;
+
   /* pushing the elements of argv onto the stack. */
-  for (int i = argc; i >= 0; i--) {
-    arglen = strlen(argv[i]);
+  for (int i = argc - 1; i >= 0; i--) {
+    size_t arglen = strlen(argv[i]) + 1;
     stack_page_ptr -= arglen;
-    strlcpy ((char *) stack_page_ptr, argv[i], arglen + 1);
+    strlcpy ((char *) stack_page_ptr, argv[i], arglen);
     arg_address[i] = stack_page_ptr;
   }
 
   /* initial 4 byte alignment. */
-  stack_page_ptr -= (int) stack_page_ptr % 4;
-  stack_page_ptr--;
+  stack_page_ptr -= ((uint32_t)stack_page_ptr) % 4;
 
   /* terminating NULL address. (see page 14 of instruction document)*/
-  *stack_page_ptr = (uint32_t) 0;
+  // *stack_page_ptr = (uint32_t) 0;
 
   /* pushing the addresses of argv elements onto the stack. */
-  for (int i = argc; i >- 0; i--) {
-    stack_page_ptr--;
-    *stack_page_ptr = (uint32_t) arg_address[i];
+  for (int i = argc - 1; i >= 0; i--) {
+    stack_page_ptr -= 4;
+    *((uint32_t*)stack_page_ptr) = (uint32_t) arg_address[i];
   }  
 
   /* second alignment; this time 16 bytes. */
-  temporary = stack_page_ptr;
-  stack_page_ptr -= ((int) stack_page_ptr + 8) % 16;
+  uint32_t temporary = (uint32_t) stack_page_ptr;
+  stack_page_ptr -= (((uint32_t) stack_page_ptr) + 8) % 16;
 
   /* pushing &argv onto stack. */
-  stack_page_ptr--;
-  *stack_page_ptr = (uint32_t) temporary;
+  stack_page_ptr -= 4;
+  *((uint32_t*)stack_page_ptr) = temporary;
 
   /* pushing argc onto stack. */
-  stack_page_ptr--;
-  *stack_page_ptr = argc;
+  stack_page_ptr -= 4;
+  *((uint32_t*)stack_page_ptr) = (uint32_t) argc;
 
   /* pushing (fake) return address 0. */
-  stack_page_ptr--;
-  *stack_page_ptr = (uint32_t) 0;
+  stack_page_ptr -= 4;
+  *((uint32_t*)stack_page_ptr) = (uint32_t) 0;
 
   *esp = (void *) stack_page_ptr;
 
