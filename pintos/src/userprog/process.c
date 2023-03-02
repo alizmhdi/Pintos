@@ -494,7 +494,7 @@ setup_stack (void **esp, char *argv[], int argc)
     }
   
   /* pushing the elements of argv onto the stack. */
-  for (int i = argc; i >= 0; i--) {
+  for (int i = argc - 1; i >= 0; i--) {
     arglen = strlen(argv[i]);
     stack_page_ptr -= arglen;
     strlcpy ((char *) stack_page_ptr, argv[i], arglen + 1);
@@ -509,7 +509,7 @@ setup_stack (void **esp, char *argv[], int argc)
   *stack_page_ptr = (uint32_t) 0;
 
   /* pushing the addresses of argv elements onto the stack. */
-  for (int i = argc; i >- 0; i--) {
+  for (int i = argc - 1; i >- 0; i--) {
     stack_page_ptr--;
     *stack_page_ptr = (uint32_t) arg_address[i];
   }  
