@@ -202,7 +202,7 @@ struct Elf32_Phdr
 #define PF_W 2          /* Writable. */
 #define PF_R 4          /* Readable. */
 
-static bool setup_stack (void **esp);
+static bool setup_stack (void **esp, char *argv[], int argc);
 static bool validate_segment (const struct Elf32_Phdr *, struct file *);
 static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
                           uint32_t read_bytes, uint32_t zero_bytes,
@@ -212,10 +212,10 @@ static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
 #define MAX_ARGS 32
 #define MAX_FILENAME_SIZE 1024
                           
-void parse_file_name (char *file_name, int *argc, char **argv);
+bool parse_file_name (char *file_name, int *argc, char **argv);
 
 /* Parses filename into array of strings (argv). */
-void
+bool
 parse_file_name (char *file_name, int *argc, char **argv)
 {
   int i;
@@ -224,19 +224,17 @@ parse_file_name (char *file_name, int *argc, char **argv)
   char *saveptr;
 
   c = strtok_r(file_name," ", &saveptr);	 /* Start tokenizer on filename */
-  for (i=0; c ; i++) {
-    //TODO is this necessary?
-    //if (i >= MAX_ARGS) {
-    //  exit(-1);
-    //}
-
+  for (i=0; c && i < MAX_ARGS; i++) {
     argv[i] = c;
     c = strtok_r(NULL," ", &saveptr);	/* scan for next token */
   }
 
+  if (strtok_r(NULL, " ", &saveptr) != NULL)
+    return false;
+
   *argc = i;
 
-  return;
+  return true;
 }
 
 /* Loads an ELF executable from FILE_NAME into the current thread.
@@ -257,7 +255,8 @@ load (const char *file_name, void (**eip) (void), void **esp)
   char **argv = palloc_get_page(0);
   strlcpy(file_name_copy, file_name, PGSIZE);
   int argc;
-  parse_file_name (file_name_copy, &argc, argv);
+  if (!parse_file_name (file_name_copy, &argc, argv))
+    goto done;
 
   /* Allocate and activate page directory. */
   t->pagedir = pagedir_create ();
@@ -268,10 +267,10 @@ load (const char *file_name, void (**eip) (void), void **esp)
   
 
   /* Open executable file. */
-  file = filesys_open (file_name);
+  file = filesys_open (argv[0]);
   if (file == NULL)
     {
-      printf ("load: %s: open failed\n", file_name);
+      printf ("load: %s: open failed\n", argv[0]);
       goto done;
     }
 
@@ -284,7 +283,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
       || ehdr.e_phentsize != sizeof (struct Elf32_Phdr)
       || ehdr.e_phnum > 1024)
     {
-      printf ("load: %s: error loading executable\n", file_name);
+      printf ("load: %s: error loading executable\n", argv[0]);
       goto done;
     }
 
@@ -348,7 +347,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
     }
 
   /* Set up stack. */
-  if (!setup_stack (esp))
+  if (!setup_stack (esp, argv, argc))
     goto done;
 
   /* Start address. */
@@ -473,10 +472,15 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 /* Create a minimal stack by mapping a zeroed page at the top of
    user virtual memory. */
 static bool
-setup_stack (void **esp)
+setup_stack (void **esp, char *argv[], int argc)
 {
   uint8_t *kpage;
   bool success = false;
+
+  uint8_t *stack_page_ptr = (uint8_t *) *esp;
+  uint8_t *arg_address[argc];
+  uint8_t *temporary;
+  size_t arglen;
 
   kpage = palloc_get_page (PAL_USER | PAL_ZERO);
   if (kpage != NULL)
@@ -486,7 +490,49 @@ setup_stack (void **esp)
         *esp = PHYS_BASE;
       else
         palloc_free_page (kpage);
+        goto setup_done;
     }
+  
+  /* pushing the elements of argv onto the stack. */
+  for (int i = argc; i >= 0; i--) {
+    arglen = strlen(argv[i]);
+    stack_page_ptr -= arglen;
+    strlcpy ((char *) stack_page_ptr, argv[i], arglen + 1);
+    arg_address[i] = stack_page_ptr;
+  }
+
+  /* initial 4 byte alignment. */
+  stack_page_ptr -= (int) stack_page_ptr % 4;
+  stack_page_ptr--;
+
+  /* terminating NULL address. (see page 14 of instruction document)*/
+  *stack_page_ptr = (uint32_t) 0;
+
+  /* pushing the addresses of argv elements onto the stack. */
+  for (int i = argc; i >- 0; i--) {
+    stack_page_ptr--;
+    *stack_page_ptr = (uint32_t) arg_address[i];
+  }  
+
+  /* second alignment; this time 16 bytes. */
+  temporary = stack_page_ptr;
+  stack_page_ptr -= ((int) stack_page_ptr + 8) % 16;
+
+  /* pushing &argv onto stack. */
+  stack_page_ptr--;
+  *stack_page_ptr = (uint32_t) temporary;
+
+  /* pushing argc onto stack. */
+  stack_page_ptr--;
+  *stack_page_ptr = argc;
+
+  /* pushing (fake) return address 0. */
+  stack_page_ptr--;
+  *stack_page_ptr = (uint32_t) 0;
+
+  *esp = (void *) stack_page_ptr;
+
+setup_done:    
   return success;
 }
 
