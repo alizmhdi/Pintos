@@ -508,7 +508,8 @@ setup_stack (void **esp, char *argv[], int argc)
   stack_page_ptr -= ((uint32_t)stack_page_ptr) % 4;
 
   /* terminating NULL address. (see page 14 of instruction document)*/
-  // *stack_page_ptr = (uint32_t) 0;
+  stack_page_ptr -= 4;
+  *((uint32_t*)stack_page_ptr) = (uint32_t) 0;
 
   /* pushing the addresses of argv elements onto the stack. */
   for (int i = argc - 1; i >= 0; i--) {
