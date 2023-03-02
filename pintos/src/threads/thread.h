@@ -131,7 +131,7 @@ struct thread
   struct process_status * tstatus;
 
   // list of all file descriptors for this thread
-  struct FD * file_descriptors[MAX_OPEN_FILE];
+  struct file * file_descriptors[MAX_OPEN_FILE];
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */

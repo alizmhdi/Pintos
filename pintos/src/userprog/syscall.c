@@ -17,7 +17,7 @@ syscall_init (void)
 }
 
 static void syscall_practice (struct intr_frame *, uint32_t*);
-static void syscall_exit (struct intr_frame*, uint32_t, struct thread*);
+static void syscall_exit (struct intr_frame*, uint32_t);
 static void syscall_write (struct intr_frame*, uint32_t*, struct thread*);
 static void syscall_create (struct intr_frame*, uint32_t*);
 static void syscall_remove (struct intr_frame*, uint32_t*);
@@ -37,21 +37,15 @@ check_fd (struct thread *t, int fd)
 {
   if (fd == NULL || fd > MAX_OPEN_FILE || fd < 0  || t->file_descriptors[fd] == NULL) 
     return false;
-
   return true;
 }
 
 static bool
-check_address (struct thread *t, const void *vaddr)
+check_address (const void *vaddr)
 {
-  if (vaddr == NULL || !is_user_vaddr (vaddr))
-    return false;
-
-#ifdef USERPROG
-  return pagedir_get_page (t->pagedir, vaddr) == NULL ? false : true;
-#endif
-
-  return true;
+  if (vaddr != NULL || is_user_vaddr (vaddr) || pagedir_get_page(thread_current()->pagedir, vaddr) != NULL)
+    return true;
+  return false;
 }
 
 static void
@@ -76,7 +70,7 @@ syscall_handler (struct intr_frame *f UNUSED)
       syscall_practice (f, args);
       break;
     case SYS_EXIT:
-      syscall_exit (f, args, current_thread);
+      syscall_exit(f, args[1]);
       break;
     case SYS_WRITE:
       syscall_write (f, args, current_thread);
@@ -106,44 +100,45 @@ syscall_practice (struct intr_frame *f, uint32_t* args)
 }
 
 static void
-syscall_exit (struct intr_frame *f, uint32_t code, struct thread* current_thread)
+syscall_exit (struct intr_frame *f, uint32_t code)
 {
   f->eax = code;
-  current_thread->tstatus->exit_code = code;
+  printf ("%s: exit(%d)\n", thread_current()->name, code);
   thread_exit();
+  return;
 }
 
 static void
 syscall_write (struct intr_frame *f, uint32_t* args, struct thread* current_thread)
 {
-  int fd = args[1];
-  const char * buffer = (const char *) args[2];
-  unsigned size = args[3];
 
-  if (!check_fd (current_thread, fd) || 
-      !check_address(current_thread, buffer) || 
-      !check_address(current_thread, buffer + size) ||
-      size < 0 ||
-      fd == 0)
-    syscall_exit (f, -1, current_thread);
-  
+  int fd = (int) args[1];
+  const char * buffer = (char *) args[2];
+  unsigned size = (int) args[3];
+
   f->eax = -1;
   if (fd == 1 || fd == 2)
   {
     putbuf (buffer, size);
     f->eax = size;
+    return;
   }
   
-  f->eax = file_write (current_thread->file_descriptors[fd]->pfile, buffer, size);
+  if (!check_fd (current_thread, fd) || 
+      size < 0 ||
+      fd == 0)
+    syscall_exit (f, -1);
+  
+  f->eax = file_write (current_thread->file_descriptors[fd], buffer, size);
 }
 
 static void
 syscall_create (struct intr_frame *f, uint32_t* args)
 {
-  char * name = args[1];
-  unsigned size = args[2];
+  char * name = (char *) args[1];
+  unsigned size = (int ) args[2];
 
-  f->eax = filesys_create (name, size);
+  f->eax = filesys_create(name, size);
 }
 
 static void
@@ -158,7 +153,7 @@ static void
 syscall_open (struct intr_frame * f, uint32_t * args, struct thread * current_thread)
 {
   int fd = 3;
-  for (fd; fd <= MAX_OPEN_FILE; fd ++)
+  for (fd; fd < MAX_OPEN_FILE; fd ++)
   {
     if (current_thread->file_descriptors[fd] == NULL)
       break;
@@ -170,13 +165,10 @@ syscall_open (struct intr_frame * f, uint32_t * args, struct thread * current_th
     return;
   }
 
-  if (fd > 0)
-  {
-    current_thread->file_descriptors[fd]->pfile = filesys_open ((const char *) args[1]);
-    if (current_thread->file_descriptors[fd]->pfile == NULL){
-      f->eax = -1;
-      return;
-    }
+  current_thread->file_descriptors[fd] = filesys_open((char *) args[1]);
+  if (current_thread->file_descriptors[fd] == NULL){
+    f->eax = -1;
+    return;
   }
 
   f->eax = fd;
@@ -190,7 +182,7 @@ syscall_close (struct intr_frame * f, uint32_t * args, struct thread * current_t
 
   if (!check_fd (current_thread, fd) || 
       fd < 3)
-    syscall_exit (f, -1, current_thread);
+    syscall_exit (f, -1);
 
   file_close(current_thread->file_descriptors[args[1]]);
   current_thread->file_descriptors[args[1]] = NULL;
