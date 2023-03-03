@@ -30,7 +30,7 @@ static bool load (const char *cmdline, void (**eip) (void), void **esp);
 tid_t
 process_execute (const char *file_name)
 {
-  char *fn_copy;
+  char *fn_copy, *fn_threadname_copy;
   tid_t tid;
 
   sema_init (&temporary, 0);
@@ -41,8 +41,20 @@ process_execute (const char *file_name)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
 
+  /* Make a second copy of FILE_NAME that is used to parse the thread name. Fixes bug causing last line of many tests to have extra characters. */
+  fn_threadname_copy = palloc_get_page (0);
+  if (fn_threadname_copy == NULL)
+    return TID_ERROR;
+  strlcpy (fn_threadname_copy, file_name, PGSIZE);
+
+  /* Tokenize first argument of FILE_NAME to be used as the name of the thread. */
+  char *save_ptr;
+  char *thread_name = strtok_r(fn_threadname_copy, " ", &save_ptr);
+
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
+  tid = thread_create (fn_threadname_copy, PRI_DEFAULT, start_process, fn_copy);
+  palloc_free_page (fn_threadname_copy);
+
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy);
   return tid;
