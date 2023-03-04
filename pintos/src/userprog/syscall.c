@@ -102,6 +102,9 @@ syscall_handler(struct intr_frame *f UNUSED)
   case SYS_READ:
     syscall_read(f, args, current_thread);
     break;
+  case SYS_FILESIZE:
+    syscall_filesize(f, args, current_thread);
+    break;
   default:
     break;
   }
@@ -267,4 +270,17 @@ syscall_read(struct intr_frame *f, uint32_t *args, struct thread *current_thread
     syscall_exit(f, -1);
 
   f->eax = file_read(current_thread->file_descriptors[fd], buffer, size);
+}
+
+static void
+syscall_filesize(struct intr_frame *f, uint32_t *args, struct thread *current_thread)
+{
+  int fd = (int) args[1];
+
+  if (!check_fd(current_thread, fd) || 
+      fd == 0 || 
+      fd == 1)
+      syscall_exit(f, -1);
+
+  f->eax = file_length(current_thread->file_descriptors[fd]);
 }
