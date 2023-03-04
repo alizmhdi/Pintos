@@ -156,6 +156,11 @@ page_fault (struct intr_frame *f)
           not_present ? "not present" : "rights violation",
           write ? "writing" : "reading",
           user ? "user" : "kernel");
+
+  f->eax = -1;
+  printf("%s: exit(%d)\n", thread_current()->name, -1);
+  thread_exit();
+
   kill (f);
 }
 
