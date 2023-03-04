@@ -17,7 +17,7 @@ void syscall_init(void)
 }
 
 static void syscall_practice(struct intr_frame *, uint32_t *);
-static void syscall_exit(struct intr_frame *, uint32_t);
+static void syscall_exit(struct intr_frame *, int);
 static void syscall_write(struct intr_frame *, uint32_t *, struct thread *);
 static void syscall_create(struct intr_frame *, uint32_t *);
 static void syscall_remove(struct intr_frame *, uint32_t *);
@@ -52,6 +52,9 @@ syscall_handler(struct intr_frame *f UNUSED)
 {
   uint32_t *args = ((uint32_t *)f->esp);
 
+  if (!check_address(args) || !check_address(args + 4))
+    syscall_exit(f, -1);
+
   /*
    * The following print statement, if uncommented, will print out the syscall
    * number whenever a process enters a system call. You might find it useful
@@ -69,6 +72,8 @@ syscall_handler(struct intr_frame *f UNUSED)
     syscall_practice(f, args);
     break;
   case SYS_EXIT:
+    if(!check_address(args + 1))
+      syscall_exit(f, -1);
     syscall_exit(f, args[1]);
     break;
   case SYS_WRITE:
@@ -110,7 +115,7 @@ syscall_practice(struct intr_frame *f, uint32_t *args)
 }
 
 static void
-syscall_exit(struct intr_frame *f, uint32_t code)
+syscall_exit(struct intr_frame *f, int code)
 {
   f->eax = code;
   printf("%s: exit(%d)\n", thread_current()->name, code);
