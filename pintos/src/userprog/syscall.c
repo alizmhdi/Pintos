@@ -1,5 +1,6 @@
 #include "userprog/syscall.h"
 #include <stdio.h>
+#include <string.h>
 #include <syscall-nr.h>
 #include "threads/interrupt.h"
 #include "threads/thread.h"
@@ -40,9 +41,23 @@ check_fd(struct thread *t, int fd)
 static bool
 check_address(const void *vaddr)
 {
-  if (vaddr != NULL || is_user_vaddr(vaddr) || pagedir_get_page(thread_current()->pagedir, vaddr) != NULL)
+  if (vaddr != NULL && is_user_vaddr(vaddr) && pagedir_get_page(thread_current()->pagedir, vaddr) != NULL)
     return true;
   return false;
+}
+
+static bool
+check_address_range(const void *vaddr, uint32_t size)
+{
+  return check_address(vaddr) && check_address(vaddr + size);
+}
+
+static bool
+check_str(const char *str, uint32_t len)
+{
+  char *pstr = pagedir_get_page(thread_current()->pagedir, str);
+  uint32_t str_len = strlen(pstr);
+  return pstr != NULL && check_address(str + str_len + 1) && (len == 0 || str_len >= len);
 }
 
 static void
@@ -115,6 +130,12 @@ syscall_write(struct intr_frame *f, uint32_t *args, struct thread *current_threa
   const char *buffer = (char *)args[2];
   unsigned size = (int)args[3];
 
+  if (!check_address(buffer))
+  {
+    syscall_exit(f, -1);
+    return;
+  }
+
   f->eax = -1;
   if (fd == 1 || fd == 2)
   {
@@ -134,8 +155,15 @@ syscall_write(struct intr_frame *f, uint32_t *args, struct thread *current_threa
 static void
 syscall_create(struct intr_frame *f, uint32_t *args)
 {
+  
   char *name = (char *)args[1];
   unsigned size = (int)args[2];
+
+  if (!check_address(name) || strlen(name) <= 0)
+  {
+    syscall_exit(f, -1);
+    return;
+  }
 
   f->eax = filesys_create(name, size);
 }
@@ -151,6 +179,13 @@ syscall_remove(struct intr_frame *f, uint32_t *args)
 static void
 syscall_open(struct intr_frame *f, uint32_t *args, struct thread *current_thread)
 {
+  char *name = (char *) args[1];
+  if (!check_address(name))
+  {
+    syscall_exit(f, -1);
+    return;
+  }
+
   int fd = 3;
   for (fd; fd < MAX_OPEN_FILE; fd++)
   {
@@ -164,7 +199,7 @@ syscall_open(struct intr_frame *f, uint32_t *args, struct thread *current_thread
     return;
   }
 
-  current_thread->file_descriptors[fd] = filesys_open((char *)args[1]);
+  current_thread->file_descriptors[fd] = filesys_open(name);
   if (current_thread->file_descriptors[fd] == NULL)
   {
     f->eax = -1;
@@ -213,6 +248,12 @@ syscall_read(struct intr_frame *f, uint32_t *args, struct thread *current_thread
   int fd = (int)args[1];
   char *buffer = (char *)args[2];
   int size = (int)args[3];
+
+  if (!check_address(buffer))
+  {
+    syscall_exit(f, -1);
+    return;
+  }
 
   if (fd == 0)
   {
