@@ -8,6 +8,7 @@
 #include "threads/vaddr.h"
 #include "filesys/file.h"
 #include "filesys/filesys.h"
+#include "process.h"
 
 static void syscall_handler(struct intr_frame *);
 
@@ -103,6 +104,8 @@ syscall_handler(struct intr_frame *f UNUSED)
   case SYS_TELL:
     syscall_tell(f, args, current_thread);
     break;
+    case SYS_EXEC:
+      syscall_exec(f, args, current_thread);
   default:
     break;
   }
@@ -313,3 +316,14 @@ syscall_tell(struct intr_frame *f, uint32_t *args, struct thread *current_thread
 
   f->eax = file_tell(current_thread->file_descriptors[fd]);
 }
+
+static void
+syscall_exec(struct intr_frame *f, uint32_t *args, struct thread *current_thread)
+{ 
+  char *file_name = (char *) args[1];
+  
+  if (!check_address (file_name))
+    syscall_exit(f, -1);
+
+  f->eax = process_execute(file_name);
+} 
