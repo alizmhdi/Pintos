@@ -46,19 +46,6 @@ check_address(const void *vaddr)
   return false;
 }
 
-static bool
-check_address_range(const void *vaddr, uint32_t size)
-{
-  return check_address(vaddr) && check_address(vaddr + size);
-}
-
-static bool
-check_str(const char *str, uint32_t len)
-{
-  char *pstr = pagedir_get_page(thread_current()->pagedir, str);
-  uint32_t str_len = strlen(pstr);
-  return pstr != NULL && check_address(str + str_len + 1) && (len == 0 || str_len >= len);
-}
 
 static void
 syscall_handler(struct intr_frame *f UNUSED)
@@ -104,6 +91,9 @@ syscall_handler(struct intr_frame *f UNUSED)
     break;
   case SYS_FILESIZE:
     syscall_filesize(f, args, current_thread);
+    break;
+  case SYS_SEEK:
+    syscall_seek(f, args, current_thread);
     break;
   default:
     break;
@@ -279,8 +269,25 @@ syscall_filesize(struct intr_frame *f, uint32_t *args, struct thread *current_th
 
   if (!check_fd(current_thread, fd) || 
       fd == 0 || 
-      fd == 1)
+      fd == 1 ||
+      fd == 2)
       syscall_exit(f, -1);
 
   f->eax = file_length(current_thread->file_descriptors[fd]);
+}
+
+static void
+syscall_seek(struct intr_frame *f, uint32_t *args, struct thread *current_thread)
+{
+  int fd = (int) args[1];
+  int location = (int) args[2];
+
+  if (!check_fd(current_thread, fd) || 
+      fd == 0 || 
+      fd == 1 ||
+      fd == 2)
+      syscall_exit(f, -1);
+
+  file_seek(current_thread->file_descriptors[fd], location);
+  f->eax = 0;
 }
