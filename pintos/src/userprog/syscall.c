@@ -95,6 +95,9 @@ syscall_handler(struct intr_frame *f UNUSED)
   case SYS_SEEK:
     syscall_seek(f, args, current_thread);
     break;
+  case SYS_TELL:
+    syscall_tell(f, args, current_thread);
+    break;
   default:
     break;
   }
@@ -290,4 +293,18 @@ syscall_seek(struct intr_frame *f, uint32_t *args, struct thread *current_thread
 
   file_seek(current_thread->file_descriptors[fd], location);
   f->eax = 0;
+}
+
+static void
+syscall_tell(struct intr_frame *f, uint32_t *args, struct thread *current_thread)
+{
+  int fd = (int) args[1];
+
+  if (!check_fd(current_thread, fd) || 
+      fd == 0 || 
+      fd == 1 ||
+      fd == 2)
+      syscall_exit(f, -1);
+
+  f->eax = file_tell(current_thread->file_descriptors[fd]);
 }
