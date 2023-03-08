@@ -99,7 +99,6 @@ struct process_status {
 
     // for locking ref_count for Avoiding race condition
     struct lock lock; 
-
 };
 
 struct FD { 
@@ -125,7 +124,7 @@ struct thread
     uint32_t *pagedir;                  /* Page directory. */
 #endif
    // list of all the child threads
-  struct list childrens;
+  struct list children;
 
   // status of this thread (beacause only one thread can run in a proccess)
   struct process_status * tstatus;
@@ -133,9 +132,9 @@ struct thread
   // list of all file descriptors for this thread
   struct file * file_descriptors[MAX_OPEN_FILE];
 
-    /* Owned by thread.c. */
-    unsigned magic;                     /* Detects stack overflow. */
-  };
+  /* Owned by thread.c. */
+  unsigned magic;                     /* Detects stack overflow. */
+};
 
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.
