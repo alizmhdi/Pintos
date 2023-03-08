@@ -23,6 +23,18 @@ static struct semaphore temporary;
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
 
+struct process_status *
+create_process_status (void)
+{
+  struct process_status *ps = (struct process_status *) malloc (sizeof(struct process_status));
+  ps->exit_code = -1;
+  ps->ref_count = 2;
+  sema_init (&ps->sema, 0);
+  lock_init (&ps->lock);
+
+  return ps;
+}
+
 /* Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
    before process_execute() returns.  Returns the new process's
@@ -32,8 +44,12 @@ process_execute (const char *file_name)
 {
   char *fn_copy, *fn_threadname_copy;
   tid_t tid;
+  struct thread *cur_thread = thread_current ();
+  struct process_status *ps = create_process_status ();
 
-  sema_init (&temporary, 0);
+  /* Add the new process to current thread's children elements. */
+  list_push_back (&cur_thread->children, &ps->elem);
+
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
   fn_copy = palloc_get_page (0);
@@ -49,14 +65,18 @@ process_execute (const char *file_name)
 
   /* Tokenize first argument of FILE_NAME to be used as the name of the thread. */
   char *save_ptr;
-  char *thread_name = strtok_r(fn_threadname_copy, " ", &save_ptr);
+  char *thread_name = strtok_r (fn_threadname_copy, " ", &save_ptr);
 
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (fn_threadname_copy, PRI_DEFAULT, start_process, fn_copy);
   palloc_free_page (fn_threadname_copy);
 
+  /* Wait for the process to fully load. */
+  sema_down (&ps->sema);
+
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy);
+
   return tid;
 }
 
@@ -76,6 +96,12 @@ start_process (void *file_name_)
   if_.eflags = FLAG_IF | FLAG_MBS;
   success = load (file_name, &if_.eip, &if_.esp);
 
+  struct thread *cur_thread = thread_current ();
+
+  list_init (&cur_thread->children);
+
+  // TODO what's left to do here?
+
   // if_.esp -= 36;
 
   /* If load failed, quit. */
@@ -93,6 +119,29 @@ start_process (void *file_name_)
   NOT_REACHED ();
 }
 
+/* Finds the child process of the given thread with the specified thread ID and returns its `process_status`. */
+struct process_status *
+get_child_ps (struct thread *t, tid_t child_pid)
+{
+  // TODO refactor
+  struct process_status *ret;
+  struct list *t_children = &t->children;
+  
+  struct list_elem *e;
+  struct process_status *current_child;
+  for (e = list_begin (t_children); e != list_end (t_children); e = list_next (e))
+  {
+    current_child = list_entry (e, struct process_status, elem);
+    if (current_child->pid == child_pid)
+    {
+      ret = current_child;
+      break;
+    }
+  }
+
+  return ret;
+}
+
 /* Waits for thread TID to die and returns its exit status.  If
    it was terminated by the kernel (i.e. killed due to an
    exception), returns -1.  If TID is invalid or if it was not a
@@ -103,22 +152,76 @@ start_process (void *file_name_)
    This function will be implemented in problem 2-2.  For now, it
    does nothing. */
 int
-process_wait (tid_t child_tid UNUSED)
+process_wait (tid_t child_tid)
 {
-  sema_down (&temporary);
-  return 0;
+  // todo already waited?
+  /* Get the corresponding child's `process_status`. */
+  struct process_status *child_ps = get_child_ps (thread_current (), child_tid);
+  
+  /* If we didn't find it, we return -1. */
+  if (!child_ps)
+    return -1;
+
+  /* Wait for the child to exit. */
+  sema_down (&child_ps->sema);
+
+  /* Keep child's `exit_code`.
+     We do this because we want to free `child_ps` before the return statement. */
+  int ec = child_ps->exit_code;
+
+  /* Free up the resources related to this child. */
+  list_remove (&child_ps->elem);
+  free (child_ps);
+
+  /* Return the child's `exit_code`. */
+  return ec;
+}
+
+void
+free_process_resources (struct thread *t)
+{
+  struct process_status *ps = t->tstatus;
+
+  lock_acquire (&ps->lock);
+  ps->ref_count--;
+  lock_release (&ps->lock);
+
+  // todo free `file_descriptors`
+  // free (t->file_descriptors)
+  // do nothing?
+
+  struct list *children = &t->children;
+  struct list_elem *e;
+  struct process_status *cur_child;
+  for (e = list_begin (children); e != list_end (children); e = list_next (e))
+  {
+    cur_child = list_entry (e, struct process_status, elem);
+    if (cur_child->ref_count == 1)
+    {
+      e = list_remove (&cur_child->elem)->prev;
+      free (cur_child);
+    }
+  }
 }
 
 /* Free the current process's resources. */
 void
 process_exit (void)
 {
-  struct thread *cur = thread_current ();
+  struct thread *cur_thread = thread_current ();
   uint32_t *pd;
+  struct process_status *ps = cur_thread->tstatus;
+
+  free_process_resources(cur_thread);
+
+  if (ps->ref_count > 0)
+    sema_up (&(ps->sema));
+  else
+    free (ps);
 
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
-  pd = cur->pagedir;
+  pd = cur_thread->pagedir;
   if (pd != NULL)
     {
       /* Correct ordering here is crucial.  We must set
@@ -128,11 +231,10 @@ process_exit (void)
          directory before destroying the process's page
          directory, or our active page directory will be one
          that's been freed (and cleared). */
-      cur->pagedir = NULL;
+      cur_thread->pagedir = NULL;
       pagedir_activate (NULL);
       pagedir_destroy (pd);
     }
-  sema_up (&temporary);
 }
 
 /* Sets up the CPU for running user code in the current
