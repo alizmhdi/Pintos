@@ -6,14 +6,18 @@
 #include "threads/thread.h"
 #include "userprog/pagedir.h"
 #include "threads/vaddr.h"
+#include "threads/synch.h"
 #include "filesys/file.h"
 #include "filesys/filesys.h"
 #include "process.h"
 
 static void syscall_handler(struct intr_frame *);
 
+struct lock file_lock;
+
 void syscall_init(void)
 {
+  lock_init(&file_lock);
   intr_register_int(0x30, 3, INTR_ON, syscall_handler, "syscall");
 }
 
@@ -30,6 +34,8 @@ static void syscall_seek(struct intr_frame *, uint32_t *, struct thread *);
 static void syscall_tell(struct intr_frame *, uint32_t *, struct thread *);
 static void syscall_exec(struct intr_frame *, uint32_t *, struct thread *);
 static void syscall_wait(struct intr_frame *, uint32_t *, struct thread *);
+
+
 
 static bool
 check_fd(struct thread *t, int fd)
@@ -63,7 +69,7 @@ syscall_handler(struct intr_frame *f UNUSED)
    * include it in your final submission.
    */
 
-  /* printf("System call number: %d\n", args[0]); */
+  // printf("System call number: %d\n", args[0]);
 
   struct thread *current_thread = thread_current();
 
@@ -78,34 +84,54 @@ syscall_handler(struct intr_frame *f UNUSED)
     syscall_exit(f, args[1]);
     break;
   case SYS_WRITE:
+    lock_acquire(&file_lock);
     syscall_write(f, args, current_thread);
+    lock_release(&file_lock);
     break;
   case SYS_CREATE:
+    lock_acquire(&file_lock);
     syscall_create(f, args);
+    lock_release(&file_lock);
     break;
   case SYS_REMOVE:
+    lock_acquire(&file_lock);
     syscall_remove(f, args);
+    lock_release(&file_lock);
     break;
   case SYS_OPEN:
+    lock_acquire(&file_lock);
     syscall_open(f, args, current_thread);
+    lock_release(&file_lock);
     break;
   case SYS_CLOSE:
+    lock_acquire(&file_lock);
     syscall_close(f, args, current_thread);
+    lock_release(&file_lock);
     break;
   case SYS_READ:
+    lock_acquire(&file_lock);
     syscall_read(f, args, current_thread);
+    lock_release(&file_lock);
     break;
   case SYS_FILESIZE:
+    lock_acquire(&file_lock);
     syscall_filesize(f, args, current_thread);
+    lock_release(&file_lock);
     break;
   case SYS_SEEK:
+    lock_acquire(&file_lock);
     syscall_seek(f, args, current_thread);
+    lock_release(&file_lock);
     break;
   case SYS_TELL:
+    lock_acquire(&file_lock);
     syscall_tell(f, args, current_thread);
+    lock_release(&file_lock);
     break;
-    case SYS_EXEC:
-      syscall_exec(f, args, current_thread);
+  case SYS_EXEC:
+    lock_acquire(&file_lock);
+    syscall_exec(f, args, current_thread);
+    lock_release(&file_lock);
   default:
     break;
   }
@@ -129,7 +155,6 @@ syscall_exit(struct intr_frame *f, int code)
 static void
 syscall_write(struct intr_frame *f, uint32_t *args, struct thread *current_thread)
 {
-
   int fd = (int)args[1];
   const char *buffer = (char *)args[2];
   unsigned size = (int)args[3];
@@ -139,7 +164,7 @@ syscall_write(struct intr_frame *f, uint32_t *args, struct thread *current_threa
     syscall_exit(f, -1);
     return;
   }
-
+  
   f->eax = -1;
   if (fd == 1 || fd == 2)
   {
@@ -159,7 +184,6 @@ syscall_write(struct intr_frame *f, uint32_t *args, struct thread *current_threa
 static void
 syscall_create(struct intr_frame *f, uint32_t *args)
 {
-  
   char *name = (char *)args[1];
   unsigned size = (int)args[2];
 
@@ -190,6 +214,7 @@ syscall_open(struct intr_frame *f, uint32_t *args, struct thread *current_thread
     return;
   }
 
+
   int fd = 3;
   for (fd; fd < MAX_OPEN_FILE; fd++)
   {
@@ -216,7 +241,6 @@ syscall_open(struct intr_frame *f, uint32_t *args, struct thread *current_thread
 static void
 syscall_close(struct intr_frame *f, uint32_t *args, struct thread *current_thread)
 {
-
   int fd = args[1];
 
   if (!check_fd(current_thread, fd) ||
@@ -289,7 +313,7 @@ syscall_filesize(struct intr_frame *f, uint32_t *args, struct thread *current_th
 
 static void
 syscall_seek(struct intr_frame *f, uint32_t *args, struct thread *current_thread)
-{
+{ 
   int fd = (int) args[1];
   int location = (int) args[2];
 
@@ -320,10 +344,10 @@ syscall_tell(struct intr_frame *f, uint32_t *args, struct thread *current_thread
 static void
 syscall_exec(struct intr_frame *f, uint32_t *args, struct thread *current_thread)
 { 
-  char *file_name = (char *) args[1];
+  // char *file_name = (char *) args[1];
   
-  if (!check_address (file_name))
-    syscall_exit(f, -1);
+  // if (!check_address (file_name))
+  //   syscall_exit(f, -1);
 
-  f->eax = process_execute(file_name);
+  // f->eax = process_execute(file_name);
 } 
