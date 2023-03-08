@@ -132,6 +132,10 @@ syscall_handler(struct intr_frame *f UNUSED)
     lock_acquire(&file_lock);
     syscall_exec(f, args, current_thread);
     lock_release(&file_lock);
+  case SYS_WAIT:
+    lock_acquire (&file_lock);
+    syscall_wait (f, args, current_thread);
+    lock_release (&file_lock);
   default:
     break;
   }
@@ -350,4 +354,11 @@ syscall_exec(struct intr_frame *f, uint32_t *args, struct thread *current_thread
   //   syscall_exit(f, -1);
 
   // f->eax = process_execute(file_name);
-} 
+}
+
+static void
+syscall_wait(struct intr_frame *f, uint32_t *args, struct thread *current_thread)
+{ 
+  tid_t child_tid = (tid_t) args[1];
+  f->eax = process_wait(child_tid);
+}
