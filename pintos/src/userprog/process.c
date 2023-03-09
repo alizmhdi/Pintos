@@ -20,7 +20,6 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 
-static struct semaphore temporary;
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
 
@@ -48,8 +47,8 @@ process_execute (const char *file_name)
 
   struct ts *ts_copy = malloc (sizeof (struct ts));
 
-  struct thread *current_thread = thread_current();
-  struct process_status *ps = create_process_status();
+  struct thread *current_thread = thread_current ();
+  struct process_status *ps = create_process_status ();
   ts_copy->ps = ps;
 
   /* Add the new process to current thread's children elements. */
@@ -86,8 +85,9 @@ process_execute (const char *file_name)
     free (ps);
     return TID_ERROR;
   } 
-  else {
-    sema_down(&ps->sema);
+  else
+  {
+    sema_down (&ps->sema);
   }
 
   if (ps->exited && ps->exit_code == -1)
@@ -96,8 +96,6 @@ process_execute (const char *file_name)
     free (ps);
     return -1;
   }
-
-  
 
   return tid;
 }
@@ -130,11 +128,11 @@ start_process (void *ts)
   {
     ps->exit_code = -1;
     ps->exited = true;
-    sema_up(&ps->sema);
+    sema_up (&ps->sema);
     thread_exit ();
   }
 
-  sema_up(&ps->sema);
+  sema_up (&ps->sema);
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
@@ -209,7 +207,7 @@ free_process_resources (struct thread *t)
   struct process_status *ps = t->tstatus;
 
   lock_acquire (&ps->lock);
-  ps->ref_count--;
+  ps->ref_count --;
   lock_release (&ps->lock);
 
   struct list *children = &t->children;
@@ -233,33 +231,33 @@ process_exit (void)
   struct thread *current_thread = thread_current ();
   uint32_t *pd;
 
-  lock_acquire (&(current_thread->tstatus->lock));
-  (current_thread->tstatus->ref_count)--;
-  lock_release (&(current_thread->tstatus->lock));
-  sema_up (&(current_thread->tstatus->sema));
+  lock_acquire (&current_thread->tstatus->lock);
+  current_thread->tstatus->ref_count --;
+  lock_release (&current_thread->tstatus->lock);
+  sema_up (&current_thread->tstatus->sema);
 
   if (current_thread->tstatus->ref_count == 0)
     free (current_thread->tstatus);
 
-  free_process_resources(current_thread);
+  free_process_resources (current_thread);
 
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
   pd = current_thread->pagedir;
   if (pd != NULL)
-    {
-      /* Correct ordering here is crucial.  We must set
-         cur->pagedir to NULL before switching page directories,
-         so that a timer interrupt can't switch back to the
-         process page directory.  We must activate the base page
-         directory before destroying the process's page
-         directory, or our active page directory will be one
-         that's been freed (and cleared). */
-      current_thread->pagedir = NULL;
-      pagedir_activate (NULL);
-      pagedir_destroy (pd);
-    }
-  file_close(current_thread->file_exec);
+  {
+    /* Correct ordering here is crucial.  We must set
+        cur->pagedir to NULL before switching page directories,
+        so that a timer interrupt can't switch back to the
+        process page directory.  We must activate the base page
+        directory before destroying the process's page
+        directory, or our active page directory will be one
+        that's been freed (and cleared). */
+    current_thread->pagedir = NULL;
+    pagedir_activate (NULL);
+    pagedir_destroy (pd);
+  }
+  file_close (current_thread->file_exec);
 }
 
 /* Sets up the CPU for running user code in the current
@@ -362,13 +360,13 @@ parse_file_name (char *file_name, int *argc, char **argv)
   
   char *saveptr;
 
-  c = strtok_r(file_name," ", &saveptr);	 /* Start tokenizer on filename */
+  c = strtok_r (file_name," ", &saveptr);	 /* Start tokenizer on filename */
   for (i=0; c && i < MAX_ARGS; i++) {
     argv[i] = c;
-    c = strtok_r(NULL," ", &saveptr);	/* scan for next token */
+    c = strtok_r (NULL," ", &saveptr);	/* scan for next token */
   }
 
-  if (strtok_r(NULL, " ", &saveptr) != NULL)
+  if (strtok_r (NULL, " ", &saveptr) != NULL)
     return false;
 
   *argc = i;
@@ -390,9 +388,9 @@ load (const char *file_name, void (**eip) (void), void **esp)
   bool success = false;
   int i;
 
-  char *file_name_copy = palloc_get_page(0); 
-  char **argv = palloc_get_page(0);
-  strlcpy(file_name_copy, file_name, PGSIZE);
+  char *file_name_copy = palloc_get_page (0); 
+  char **argv = palloc_get_page (0);
+  strlcpy (file_name_copy, file_name, PGSIZE);
   int argc;
   if (!parse_file_name (file_name_copy, &argc, argv))
     goto done;
@@ -403,18 +401,16 @@ load (const char *file_name, void (**eip) (void), void **esp)
     goto done;
   process_activate ();
 
-  
-
   /* Open executable file. */
   file = filesys_open (argv[0]);
   if (file == NULL)
-    {
-      printf ("load: %s: open failed\n", argv[0]);
-      goto done;
-    }
+  {
+    printf ("load: %s: open failed\n", argv[0]);
+    goto done;
+  }
 
   /* deny write to executable */
-  file_deny_write(file);
+  file_deny_write (file);
 
   /* Read and verify executable header. */
   if (file_read (file, &ehdr, sizeof ehdr) != sizeof ehdr
@@ -487,7 +483,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
           break;
         }
     }
-// 
+  
   /* Set up stack. */
   if (!setup_stack (esp, argv, argc))
     goto done;
@@ -499,8 +495,8 @@ load (const char *file_name, void (**eip) (void), void **esp)
 
  done:
   /* We arrive here whether the load is successful or not. */
-  palloc_free_page(file_name_copy);
-  palloc_free_page(argv);
+  palloc_free_page (file_name_copy);
+  palloc_free_page (argv);
   t->file_exec = file;
   return success;
 }
@@ -625,38 +621,42 @@ setup_stack (void **esp, char *argv[], int argc)
 
   kpage = palloc_get_page (PAL_USER | PAL_ZERO);
   if (kpage != NULL)
+  {
+    success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
+    if (success)
     {
-      success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
-      if (success) {
-        *esp = PHYS_BASE;
-      } else {
-        palloc_free_page (kpage);
-        goto setup_done;
-      }
+      *esp = PHYS_BASE;
     }
+    else
+    {
+      palloc_free_page (kpage);
+      goto setup_done;
+    }
+  }
   
   uint8_t *stack_page_ptr = (uint8_t *) *esp;
-  // size_t arglen;
 
   /* pushing the elements of argv onto the stack. */
-  for (int i = argc - 1; i >= 0; i--) {
-    size_t arglen = strlen(argv[i]) + 1;
+  for (int i = argc - 1; i >= 0; i--)
+  {
+    size_t arglen = strlen (argv[i]) + 1;
     stack_page_ptr -= arglen;
     strlcpy ((char *) stack_page_ptr, argv[i], arglen);
     arg_address[i] = stack_page_ptr;
   }
 
   /* initial 4 byte alignment. */
-  stack_page_ptr -= ((uint32_t)stack_page_ptr) % 4;
+  stack_page_ptr -= ((uint32_t) stack_page_ptr) % 4;
 
   /* terminating NULL address. (see page 14 of instruction document)*/
   stack_page_ptr -= 4;
-  *((uint32_t*)stack_page_ptr) = (uint32_t) 0;
+  *((uint32_t *)stack_page_ptr) = (uint32_t) 0;
 
   /* pushing the addresses of argv elements onto the stack. */
-  for (int i = argc - 1; i >= 0; i--) {
+  for (int i = argc - 1; i >= 0; i--)
+  {
     stack_page_ptr -= 4;
-    *((uint32_t*)stack_page_ptr) = (uint32_t) arg_address[i];
+    *((uint32_t *)stack_page_ptr) = (uint32_t) arg_address[i];
   }  
 
   /* second alignment; this time 16 bytes. */
@@ -665,15 +665,15 @@ setup_stack (void **esp, char *argv[], int argc)
 
   /* pushing &argv onto stack. */
   stack_page_ptr -= 4;
-  *((uint32_t*)stack_page_ptr) = temporary;
+  *((uint32_t *)stack_page_ptr) = temporary;
 
   /* pushing argc onto stack. */
   stack_page_ptr -= 4;
-  *((uint32_t*)stack_page_ptr) = (uint32_t) argc;
+  *((uint32_t *)stack_page_ptr) = (uint32_t) argc;
 
   /* pushing (fake) return address 0. */
   stack_page_ptr -= 4;
-  *((uint32_t*)stack_page_ptr) = (uint32_t) 0;
+  *((uint32_t *)stack_page_ptr) = (uint32_t) 0;
 
   *esp = (void *) stack_page_ptr;
 

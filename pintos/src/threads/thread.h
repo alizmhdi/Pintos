@@ -84,23 +84,15 @@ typedef int tid_t;
    ready state is on the run queue, whereas only a thread in the
    blocked state is on a semaphore wait list. */
 struct process_status { 
-
     int pid;
-    
     bool exited;
-
-
     int exit_code;
-
     struct semaphore sema;
-
     struct list_elem elem;
-
-    // we define this variable to dedicate number of threads that access to this status and use it for free space
-    // at the begining this variable set to 2 (parent anc child)
+    /* we define this variable to dedicate number of threads that access to this status and use it for free space
+       at the begining this variable set to 2 (parent anc child) */
     int ref_count;
-
-    // for locking ref_count for Avoiding race condition
+    /* for locking ref_count for Avoiding race condition */
     struct lock lock; 
 };
 
