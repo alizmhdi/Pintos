@@ -149,21 +149,24 @@ syscall_write(struct intr_frame *f, uint32_t *args, struct thread *current_threa
     syscall_exit(f, -1);
     return;
   }
-  
+  lock_acquire(&file_lock);
+
   f->eax = -1;
   if (fd == 1 || fd == 2)
   {
     putbuf(buffer, size);
     f->eax = size;
+    lock_release(&file_lock);
     return;
   }
 
   if (!check_fd(current_thread, fd) ||
       size < 0 ||
-      fd == 0)
+      fd == 0) 
     syscall_exit(f, -1);
 
   f->eax = file_write(current_thread->file_descriptors[fd], buffer, size);
+  lock_release(&file_lock);
 }
 
 static void
@@ -178,15 +181,18 @@ syscall_create(struct intr_frame *f, uint32_t *args)
     return;
   }
 
+  lock_acquire(&file_lock);
   f->eax = filesys_create(name, size);
+  lock_release(&file_lock);
 }
 
 static void
 syscall_remove(struct intr_frame *f, uint32_t *args)
 {
   char *name = args[1];
-
+  lock_acquire(&file_lock);
   f->eax = filesys_remove(name);
+  lock_release(&file_lock);
 }
 
 static void
@@ -199,6 +205,7 @@ syscall_open(struct intr_frame *f, uint32_t *args, struct thread *current_thread
     return;
   }
 
+  lock_acquire(&file_lock);
 
   int fd = 3;
   for (fd; fd < MAX_OPEN_FILE; fd++)
@@ -210,6 +217,7 @@ syscall_open(struct intr_frame *f, uint32_t *args, struct thread *current_thread
   if (fd == MAX_OPEN_FILE)
   {
     f->eax = -1;
+    lock_release(&file_lock);
     return;
   }
 
@@ -217,10 +225,13 @@ syscall_open(struct intr_frame *f, uint32_t *args, struct thread *current_thread
   if (current_thread->file_descriptors[fd] == NULL)
   {
     f->eax = -1;
+    lock_release(&file_lock);
     return;
   }
 
   f->eax = fd;
+
+  lock_release(&file_lock);
 }
 
 static void
@@ -232,10 +243,14 @@ syscall_close(struct intr_frame *f, uint32_t *args, struct thread *current_threa
       fd < 3)
     syscall_exit(f, -1);
 
+  lock_acquire(&file_lock);
+
   file_close(current_thread->file_descriptors[args[1]]);
   current_thread->file_descriptors[args[1]] = NULL;
 
   f->eax = 1;
+
+  lock_release(&file_lock);
 }
 
 static unsigned
@@ -268,9 +283,12 @@ syscall_read(struct intr_frame *f, uint32_t *args, struct thread *current_thread
     return;
   }
 
+  lock_acquire(&file_lock);
+
   if (fd == 0)
   {
     f->eax = get_input_buffer(buffer, size);
+    lock_release(&file_lock);
     return;
   }
 
@@ -280,6 +298,7 @@ syscall_read(struct intr_frame *f, uint32_t *args, struct thread *current_thread
     syscall_exit(f, -1);
 
   f->eax = file_read(current_thread->file_descriptors[fd], buffer, size);
+  lock_release(&file_lock);
 }
 
 static void
@@ -293,7 +312,9 @@ syscall_filesize(struct intr_frame *f, uint32_t *args, struct thread *current_th
       fd == 2)
       syscall_exit(f, -1);
 
+  lock_acquire(&file_lock);
   f->eax = file_length(current_thread->file_descriptors[fd]);
+  lock_release(&file_lock);
 }
 
 static void
@@ -307,9 +328,10 @@ syscall_seek(struct intr_frame *f, uint32_t *args, struct thread *current_thread
       fd == 1 ||
       fd == 2)
       syscall_exit(f, -1);
-
+  lock_acquire(&file_lock);
   file_seek(current_thread->file_descriptors[fd], location);
   f->eax = 0;
+  lock_release(&file_lock);
 }
 
 static void
@@ -322,8 +344,9 @@ syscall_tell(struct intr_frame *f, uint32_t *args, struct thread *current_thread
       fd == 1 ||
       fd == 2)
       syscall_exit(f, -1);
-
+  lock_acquire(&file_lock);
   f->eax = file_tell(current_thread->file_descriptors[fd]);
+  lock_release(&file_lock);
 }
 
 static void
