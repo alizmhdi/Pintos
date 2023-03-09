@@ -100,6 +100,7 @@ start_process (void *file_name_)
 
   struct thread *cur_thread = thread_current ();
 
+  cur_thread->tstatus->pid = cur_thread->tid;
   list_init (&cur_thread->children);
 
   // TODO what's left to do here?
@@ -108,9 +109,16 @@ start_process (void *file_name_)
 
   /* If load failed, quit. */
   palloc_free_page (file_name);
-  if (!success)
+  if (!success) {
+    thread_current ()->tstatus->exit_code = -1;
+    /* Sema up in case load unsuccessful. */
+    sema_up(&cur_thread->tstatus->sema);
     thread_exit ();
+  }
 
+  /* Sema up when process start is done. */
+  sema_up(&cur_thread->tstatus->sema);
+  
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
      threads/intr-stubs.S).  Because intr_exit takes all of its

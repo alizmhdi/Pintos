@@ -348,12 +348,12 @@ syscall_tell(struct intr_frame *f, uint32_t *args, struct thread *current_thread
 static void
 syscall_exec(struct intr_frame *f, uint32_t *args, struct thread *current_thread)
 { 
-  // char *file_name = (char *) args[1];
+  char *file_name = (char *) args[1];
   
-  // if (!check_address (file_name))
-  //   syscall_exit(f, -1);
+  if (!check_address (file_name))
+    syscall_exit(f, -1);
 
-  // f->eax = process_execute(file_name);
+  f->eax = process_execute(file_name);
 }
 
 static void
