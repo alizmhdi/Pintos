@@ -150,8 +150,8 @@ start_process (void *ts)
 struct process_status *
 get_child_ps (struct thread *t, tid_t child_pid)
 {
-  // TODO refactor
-  struct process_status *ret;
+
+  struct process_status *ret = NULL;
   struct list *t_children = &t->children;
   
   struct list_elem *e;
@@ -181,12 +181,11 @@ get_child_ps (struct thread *t, tid_t child_pid)
 int
 process_wait (tid_t child_tid)
 {
-  // todo already waited?
   /* Get the corresponding child's `process_status`. */
   struct process_status *child_ps = get_child_ps (thread_current (), child_tid);
   
   /* If we didn't find it, we return -1. */
-  if (!child_ps)
+  if (child_ps == NULL)
     return -1;
 
   /* Wait for the child to exit. */
