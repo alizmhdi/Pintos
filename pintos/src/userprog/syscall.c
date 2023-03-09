@@ -45,7 +45,9 @@ check_fd (struct thread *t, int fd)
 static bool
 check_address (const void *vaddr)
 {
-  if (vaddr != NULL && is_user_vaddr (vaddr) && pagedir_get_page (thread_current ()->pagedir, vaddr) != NULL)
+  if (vaddr != NULL && 
+      is_user_vaddr (vaddr) && 
+      pagedir_get_page (thread_current ()->pagedir, vaddr) != NULL)
     return true;
   return false;
 }
