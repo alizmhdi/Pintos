@@ -123,6 +123,9 @@ struct thread
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
+
+    /* executable that is running by the thread*/
+    struct file *file_exec;
 #endif
    // list of all the child threads
   struct list children;

@@ -248,6 +248,7 @@ process_exit (void)
       pagedir_activate (NULL);
       pagedir_destroy (pd);
     }
+  file_close(current_thread->file_exec);
 }
 
 /* Sets up the CPU for running user code in the current
@@ -401,6 +402,9 @@ load (const char *file_name, void (**eip) (void), void **esp)
       goto done;
     }
 
+  /* deny write to executable */
+  file_deny_write(file);
+
   /* Read and verify executable header. */
   if (file_read (file, &ehdr, sizeof ehdr) != sizeof ehdr
       || memcmp (ehdr.e_ident, "\177ELF\1\1\1", 7)
@@ -472,7 +476,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
           break;
         }
     }
-
+// 
   /* Set up stack. */
   if (!setup_stack (esp, argv, argc))
     goto done;
@@ -486,7 +490,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
   /* We arrive here whether the load is successful or not. */
   palloc_free_page(file_name_copy);
   palloc_free_page(argv);
-  file_close (file);
+  t->file_exec = file;
   return success;
 }
 
