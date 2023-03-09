@@ -84,58 +84,38 @@ syscall_handler(struct intr_frame *f UNUSED)
     syscall_exit(f, args[1]);
     break;
   case SYS_WRITE:
-    lock_acquire(&file_lock);
     syscall_write(f, args, current_thread);
-    lock_release(&file_lock);
     break;
   case SYS_CREATE:
-    lock_acquire(&file_lock);
     syscall_create(f, args);
-    lock_release(&file_lock);
     break;
   case SYS_REMOVE:
-    lock_acquire(&file_lock);
     syscall_remove(f, args);
-    lock_release(&file_lock);
     break;
   case SYS_OPEN:
-    lock_acquire(&file_lock);
     syscall_open(f, args, current_thread);
-    lock_release(&file_lock);
     break;
   case SYS_CLOSE:
-    lock_acquire(&file_lock);
     syscall_close(f, args, current_thread);
-    lock_release(&file_lock);
     break;
   case SYS_READ:
-    lock_acquire(&file_lock);
     syscall_read(f, args, current_thread);
-    lock_release(&file_lock);
     break;
   case SYS_FILESIZE:
-    lock_acquire(&file_lock);
     syscall_filesize(f, args, current_thread);
-    lock_release(&file_lock);
     break;
   case SYS_SEEK:
-    lock_acquire(&file_lock);
     syscall_seek(f, args, current_thread);
-    lock_release(&file_lock);
     break;
   case SYS_TELL:
-    lock_acquire(&file_lock);
     syscall_tell(f, args, current_thread);
-    lock_release(&file_lock);
     break;
   case SYS_EXEC:
-    lock_acquire(&file_lock);
     syscall_exec(f, args, current_thread);
-    lock_release(&file_lock);
+    break;
   case SYS_WAIT:
-    lock_acquire (&file_lock);
     syscall_wait (f, args, current_thread);
-    lock_release (&file_lock);
+    break;
   default:
     break;
   }
@@ -151,6 +131,7 @@ static void
 syscall_exit(struct intr_frame *f, int code)
 {
   f->eax = code;
+  thread_current()->tstatus->exit_code = code;
   printf("%s: exit(%d)\n", thread_current()->name, code);
   thread_exit();
   return;
@@ -360,5 +341,6 @@ static void
 syscall_wait(struct intr_frame *f, uint32_t *args, struct thread *current_thread)
 { 
   tid_t child_tid = (tid_t) args[1];
+  
   f->eax = process_wait(child_tid);
 }

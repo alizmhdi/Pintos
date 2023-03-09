@@ -101,9 +101,10 @@ struct process_status {
     struct lock lock; 
 };
 
-struct FD { 
-  int id;
-  struct file * pfile;
+struct ts
+{
+   char *file_name;
+   struct process_status *ps;
 };
 
 struct thread

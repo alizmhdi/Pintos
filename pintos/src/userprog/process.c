@@ -27,8 +27,7 @@ static bool load (const char *cmdline, void (**eip) (void), void **esp);
 struct process_status *
 create_process_status (void)
 {
-  struct process_status *ps = (struct process_status *) malloc (sizeof(struct process_status));
-  ps->exit_code = -1;
+  struct process_status *ps = malloc (sizeof(struct process_status));
   ps->ref_count = 2;
   sema_init (&ps->sema, 0);
   lock_init (&ps->lock);
@@ -45,11 +44,15 @@ process_execute (const char *file_name)
 {
   char *fn_copy, *fn_threadname_copy;
   tid_t tid;
-  struct thread *cur_thread = thread_current ();
-  struct process_status *ps = create_process_status ();
+
+  struct ts *ts_copy = malloc (sizeof (struct ts));
+
+  struct thread *current_thread = thread_current();
+  struct process_status *ps = create_process_status();
+  ts_copy->ps = ps;
 
   /* Add the new process to current thread's children elements. */
-  list_push_back (&cur_thread->children, &ps->elem);
+  list_push_back (&current_thread->children, &ps->elem);
 
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
@@ -68,15 +71,18 @@ process_execute (const char *file_name)
   char *save_ptr;
   char *thread_name = strtok_r (fn_threadname_copy, " ", &save_ptr);
 
+  ts_copy->file_name = fn_copy;
+
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (fn_threadname_copy, PRI_DEFAULT, start_process, fn_copy);
+  tid = thread_create (fn_threadname_copy, PRI_DEFAULT, start_process, ts_copy);
   palloc_free_page (fn_threadname_copy);
 
   /* Wait for the process to fully load. */
-  sema_down (&ps->sema);
 
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy);
+  else
+    sema_down(&ps->sema);
 
   return tid;
 }
@@ -84,10 +90,15 @@ process_execute (const char *file_name)
 /* A thread function that loads a user process and starts it
    running. */
 static void
-start_process (void *file_name_)
+start_process (void *ts)
 {
-  // TODO initialize `tstatus`
-  char *file_name = file_name_;
+  struct ts * ts_copy = (struct ts *) ts;
+  struct process_status *ps = ts_copy->ps;
+  struct thread *current_thread = thread_current ();
+  current_thread->tstatus = ps;
+  ps->pid = current_thread->tid;
+
+  char *file_name = ts_copy->file_name;
   struct intr_frame if_;
   bool success;
 
@@ -98,27 +109,17 @@ start_process (void *file_name_)
   if_.eflags = FLAG_IF | FLAG_MBS;
   success = load (file_name, &if_.eip, &if_.esp);
 
-  struct thread *cur_thread = thread_current ();
-
-  cur_thread->tstatus->pid = cur_thread->tid;
-  list_init (&cur_thread->children);
-
-  // TODO what's left to do here?
-
-  // if_.esp -= 36;
-
   /* If load failed, quit. */
   palloc_free_page (file_name);
-  if (!success) {
-    thread_current ()->tstatus->exit_code = -1;
-    /* Sema up in case load unsuccessful. */
-    sema_up(&cur_thread->tstatus->sema);
+  if (!success)
+  {
+    ps->exit_code = -1;
+    sema_up(&ps->sema);
     thread_exit ();
   }
 
-  /* Sema up when process start is done. */
-  sema_up(&cur_thread->tstatus->sema);
-  
+  sema_up(&ps->sema);
+
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
      threads/intr-stubs.S).  Because intr_exit takes all of its
@@ -218,20 +219,22 @@ free_process_resources (struct thread *t)
 void
 process_exit (void)
 {
-  struct thread *cur_thread = thread_current ();
+  struct thread *current_thread = thread_current ();
   uint32_t *pd;
-  struct process_status *ps = cur_thread->tstatus;
 
-  free_process_resources(cur_thread);
+  lock_acquire (&(current_thread->tstatus->lock));
+  (current_thread->tstatus->ref_count)--;
+  lock_release (&(current_thread->tstatus->lock));
+  sema_up (&(current_thread->tstatus->sema));
 
-  if (ps->ref_count > 0)
-    sema_up (&(ps->sema));
-  else
-    free (ps);
+  if (current_thread->tstatus->ref_count == 0)
+    free (current_thread->tstatus);
+
+  //free_process_resources(current_thread);
 
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
-  pd = cur_thread->pagedir;
+  pd = current_thread->pagedir;
   if (pd != NULL)
     {
       /* Correct ordering here is crucial.  We must set
@@ -241,7 +244,7 @@ process_exit (void)
          directory before destroying the process's page
          directory, or our active page directory will be one
          that's been freed (and cleared). */
-      cur_thread->pagedir = NULL;
+      current_thread->pagedir = NULL;
       pagedir_activate (NULL);
       pagedir_destroy (pd);
     }
