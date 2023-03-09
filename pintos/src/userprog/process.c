@@ -30,6 +30,7 @@ create_process_status (void)
   struct process_status *ps = malloc (sizeof(struct process_status));
   ps->ref_count = 2;
   sema_init (&ps->sema, 0);
+  ps->exited = false;
   lock_init (&ps->lock);
 
   return ps;
@@ -79,10 +80,24 @@ process_execute (const char *file_name)
 
   /* Wait for the process to fully load. */
 
-  if (tid == TID_ERROR)
+  if (tid == TID_ERROR) 
+  {
     palloc_free_page (fn_copy);
-  else
+    free (ps);
+    return TID_ERROR;
+  } 
+  else {
     sema_down(&ps->sema);
+  }
+
+  if (ps->exited && ps->exit_code == -1)
+  {
+    list_remove (&ps->elem);
+    free (ps);
+    return -1;
+  }
+
+  
 
   return tid;
 }
@@ -114,6 +129,7 @@ start_process (void *ts)
   if (!success)
   {
     ps->exit_code = -1;
+    ps->exited = true;
     sema_up(&ps->sema);
     thread_exit ();
   }

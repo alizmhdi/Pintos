@@ -87,6 +87,9 @@ struct process_status {
 
     int pid;
     
+    bool exited;
+
+
     int exit_code;
 
     struct semaphore sema;
