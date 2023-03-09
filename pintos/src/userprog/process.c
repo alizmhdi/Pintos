@@ -150,7 +150,6 @@ start_process (void *ts)
 struct process_status *
 get_child_ps (struct thread *t, tid_t child_pid)
 {
-  // TODO refactor
   struct process_status *ret;
   struct list *t_children = &t->children;
   
@@ -213,10 +212,6 @@ free_process_resources (struct thread *t)
   ps->ref_count--;
   lock_release (&ps->lock);
 
-  // todo free `file_descriptors`
-  // free (t->file_descriptors)
-  // do nothing?
-
   struct list *children = &t->children;
   struct list_elem *e;
   struct process_status *cur_child;
@@ -246,7 +241,7 @@ process_exit (void)
   if (current_thread->tstatus->ref_count == 0)
     free (current_thread->tstatus);
 
-  //free_process_resources(current_thread);
+  free_process_resources(current_thread);
 
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */

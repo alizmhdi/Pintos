@@ -53,6 +53,15 @@ check_address(const void *vaddr)
   return false;
 }
 
+static bool
+check_string (char * str)
+{
+  char * string = pagedir_get_page (thread_current ()->pagedir, str);
+  if (string != NULL && check_address (str + strlen (string) + 1))
+    return true;
+  return false;
+}
+
 
 static void
 syscall_handler(struct intr_frame *f UNUSED)
@@ -145,18 +154,13 @@ syscall_write(struct intr_frame *f, uint32_t *args, struct thread *current_threa
   unsigned size = (int)args[3];
 
   if (!check_address(buffer))
-  {
     syscall_exit(f, -1);
-    return;
-  }
-  lock_acquire(&file_lock);
 
   f->eax = -1;
   if (fd == 1 || fd == 2)
   {
     putbuf(buffer, size);
     f->eax = size;
-    lock_release(&file_lock);
     return;
   }
 
@@ -165,6 +169,7 @@ syscall_write(struct intr_frame *f, uint32_t *args, struct thread *current_threa
       fd == 0) 
     syscall_exit(f, -1);
 
+  lock_acquire(&file_lock);
   f->eax = file_write(current_thread->file_descriptors[fd], buffer, size);
   lock_release(&file_lock);
 }
@@ -175,11 +180,11 @@ syscall_create(struct intr_frame *f, uint32_t *args)
   char *name = (char *)args[1];
   unsigned size = (int)args[2];
 
-  if (!check_address(name) || strlen(name) <= 0)
-  {
+  if (!check_address(name) || 
+      strlen(name) <= 0 ||
+      !check_string(name))
     syscall_exit(f, -1);
-    return;
-  }
+
 
   lock_acquire(&file_lock);
   f->eax = filesys_create(name, size);
@@ -190,6 +195,11 @@ static void
 syscall_remove(struct intr_frame *f, uint32_t *args)
 {
   char *name = args[1];
+
+  if (!check_address(name) ||
+      !check_string(name))
+    syscall_exit(f, -1);
+
   lock_acquire(&file_lock);
   f->eax = filesys_remove(name);
   lock_release(&file_lock);
@@ -199,13 +209,11 @@ static void
 syscall_open(struct intr_frame *f, uint32_t *args, struct thread *current_thread)
 {
   char *name = (char *) args[1];
-  if (!check_address(name))
-  {
+  if (!check_address(name) ||
+      !check_string(name))
     syscall_exit(f, -1);
-    return;
-  }
 
-  lock_acquire(&file_lock);
+  
 
   int fd = 3;
   for (fd; fd < MAX_OPEN_FILE; fd++)
@@ -217,21 +225,20 @@ syscall_open(struct intr_frame *f, uint32_t *args, struct thread *current_thread
   if (fd == MAX_OPEN_FILE)
   {
     f->eax = -1;
-    lock_release(&file_lock);
     return;
   }
 
+  lock_acquire(&file_lock);
   current_thread->file_descriptors[fd] = filesys_open(name);
+  lock_release(&file_lock);
+
   if (current_thread->file_descriptors[fd] == NULL)
   {
     f->eax = -1;
-    lock_release(&file_lock);
     return;
   }
 
   f->eax = fd;
-
-  lock_release(&file_lock);
 }
 
 static void
@@ -244,13 +251,11 @@ syscall_close(struct intr_frame *f, uint32_t *args, struct thread *current_threa
     syscall_exit(f, -1);
 
   lock_acquire(&file_lock);
-
   file_close(current_thread->file_descriptors[args[1]]);
-  current_thread->file_descriptors[args[1]] = NULL;
-
-  f->eax = 1;
-
   lock_release(&file_lock);
+
+  current_thread->file_descriptors[args[1]] = NULL;
+  f->eax = 1;
 }
 
 static unsigned
@@ -278,17 +283,11 @@ syscall_read(struct intr_frame *f, uint32_t *args, struct thread *current_thread
   int size = (int)args[3];
 
   if (!check_address(buffer))
-  {
     syscall_exit(f, -1);
-    return;
-  }
-
-  lock_acquire(&file_lock);
 
   if (fd == 0)
   {
     f->eax = get_input_buffer(buffer, size);
-    lock_release(&file_lock);
     return;
   }
 
@@ -297,6 +296,7 @@ syscall_read(struct intr_frame *f, uint32_t *args, struct thread *current_thread
       fd == 2)
     syscall_exit(f, -1);
 
+  lock_acquire(&file_lock);
   f->eax = file_read(current_thread->file_descriptors[fd], buffer, size);
   lock_release(&file_lock);
 }
@@ -328,10 +328,12 @@ syscall_seek(struct intr_frame *f, uint32_t *args, struct thread *current_thread
       fd == 1 ||
       fd == 2)
       syscall_exit(f, -1);
+
   lock_acquire(&file_lock);
   file_seek(current_thread->file_descriptors[fd], location);
-  f->eax = 0;
   lock_release(&file_lock);
+
+  f->eax = 0;
 }
 
 static void
@@ -352,12 +354,13 @@ syscall_tell(struct intr_frame *f, uint32_t *args, struct thread *current_thread
 static void
 syscall_exec(struct intr_frame *f, uint32_t *args, struct thread *current_thread)
 { 
-  char *file_name = (char *) args[1];
+  char *name = (char *) args[1];
   
-  if (!check_address (file_name))
+  if (!check_address(name) ||
+      !check_string(name))
     syscall_exit(f, -1);
 
-  f->eax = process_execute(file_name);
+  f->eax = process_execute(name);
 }
 
 static void
