@@ -69,13 +69,6 @@ syscall_handler (struct intr_frame *f UNUSED)
   if (!check_address (args) || !check_address (args + 4))
     syscall_exit (f, -1);
 
-  /*
-   * The following print statement, if uncommented, will print out the syscall
-   * number whenever a process enters a system call. You might find it useful
-   * when debugging. It will cause tests to fail, however, so you should not
-   * include it in your final submission.
-   * printf("System call number: %d\n", args[0]);
-   */
 
   struct thread *current_thread = thread_current ();
 
@@ -209,8 +202,6 @@ syscall_open (struct intr_frame *f, uint32_t *args, struct thread *current_threa
   if (!check_address (name) ||
       !check_string (name))
     syscall_exit (f, -1);
-
-  
 
   int fd = 3;
   for (fd; fd < MAX_OPEN_FILE; fd++)

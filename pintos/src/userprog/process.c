@@ -61,7 +61,8 @@ process_execute (const char *file_name)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
 
-  /* Make a second copy of FILE_NAME that is used to parse the thread name. Fixes bug causing last line of many tests to have extra characters. */
+  /* Make a second copy of FILE_NAME that is used to parse the thread name. 
+     Fixes bug causing last line of many tests to have extra characters. */
   fn_threadname_copy = palloc_get_page (0);
   if (fn_threadname_copy == NULL)
     return TID_ERROR;
@@ -78,7 +79,6 @@ process_execute (const char *file_name)
   palloc_free_page (fn_threadname_copy);
 
   /* Wait for the process to fully load. */
-
   if (tid == TID_ERROR) 
   {
     palloc_free_page (fn_copy);
@@ -86,9 +86,7 @@ process_execute (const char *file_name)
     return TID_ERROR;
   } 
   else
-  {
     sema_down (&ps->sema);
-  }
 
   if (ps->exited && ps->exit_code == -1)
   {
@@ -224,20 +222,21 @@ free_process_resources (struct thread *t)
   }
 }
 
-/* Free the current process's resources. */
+/* Free the current process's resources. and exit*/
 void
 process_exit (void)
 {
   struct thread *current_thread = thread_current ();
+  struct process_status *status = current_thread->tstatus;
   uint32_t *pd;
 
-  lock_acquire (&current_thread->tstatus->lock);
-  current_thread->tstatus->ref_count --;
-  lock_release (&current_thread->tstatus->lock);
-  sema_up (&current_thread->tstatus->sema);
+  lock_acquire (&status->lock);
+  status->ref_count --;
+  lock_release (&status->lock);
+  sema_up (&status->sema);
 
-  if (current_thread->tstatus->ref_count == 0)
-    free (current_thread->tstatus);
+  if (status->ref_count == 0)
+    free (status);
 
   free_process_resources (current_thread);
 
