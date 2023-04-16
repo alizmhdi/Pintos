@@ -145,6 +145,69 @@ struct thread
 
 >> پرسش هشتم: در کلاس سه صفت مهم ریسه‌ها که سیستم عامل هنگامی که ریسه درحال اجرا نیست را ذخیره می‌کند، بررسی کردیم:‍‍ `program counter` ، ‍‍‍`stack pointer` و `registers`. بررسی کنید که این سه کجا و چگونه در `Pintos` ذخیره می‌شوند؟ مطالعه ‍`switch.S` و تابع ‍`schedule` در فایل `thread.c` می‌تواند مفید باشد.
 
+پیش از هر چیز خوب است با ساختار کلاس`thread` در Pintos آشنا شویم.
+
+```C
+struct thread
+  {
+    /* Owned by thread.c. */
+    tid_t tid;                          /* Thread identifier. */
+    enum thread_status status;          /* Thread state. */
+    char name[16];                      /* Name (for debugging purposes). */
+    uint8_t *stack;                     /* Saved stack pointer. */
+    ...
+};
+```
+
+می‌بینیم که یکی از اعضای این کلاس، اشاره‌گر پشته برای ریسه مورد نظر است.
+پس از اطمینان از اینکه ترد مربوطه دیگر در حال اجرا نیست، و اشاره‌گر `next` نیز به یک ترد معتبر اشاره می‌کند، 
+تابع `switch_threads` فراخوانی می‌شود.
+
+در این تابع نیز، مقادیر چهار ثبات در پشته قرار داده می‌شوند.:
+
+```asm
+	pushl %ebx
+	pushl %ebp
+	pushl %esi
+	pushl %edi
+```
+
+در نهایت، ساختار پشته به صورت زیر خواهد بود:
+
+```
+next (esp+24)
+cur (esp+20)
+RETURN ADDRESS (esp+16)
+ebx (esp+12)
+ebp (esp+8)
+esi (esp+4)
+edi (esp+0)
+
+```
+
+سپس، باید متغیر cur->thread را تغییر دهیم.
+البته از آنجا که نمی‌توانیم به اعضای یک استراکت در اسمبلی اشاره کنیم، از متغیر `thread_stack_ofs` به عنوان آفست استفاده می‌کنیم.
+طبق آنچه در `switch.h` آمده‌است، از SWITCH_CUR گه معادل
+20
+و SWITCH_NEXT
+که معادل 24
+است استفاده می‌کنیم.
+
+```asm
+	# Save current stack pointer to old thread's stack, if any.
+	movl SWITCH_CUR(%esp), %eax
+	movl %esp, (%eax,%edx,1)
+```
+```asm
+	# Restore stack pointer from new thread's stack.
+	movl SWITCH_NEXT(%esp), %ecx
+	movl (%ecx,%edx,1), %esp
+```
+
+اینگونه، مقادیر چهار رجیستر گفته شده، فریم استک ریسه، و ریترن آدرس (که بیانگر همان `program counter` است) در حافظه ذخیره می‌شوند.
+در نهایت نیز چون مقدار esp بروزرسانی می‌شود، به استک فریم و باقی منابع ترد جدید دسترسی خواهیم داشت.
+
+
 >> پرسش نهم: وقتی یک ریسه‌ی هسته در ‍`Pintos` تابع `thread_exit` را صدا می‌زند، کجا و به چه ترتیبی صفحه شامل پشته و `TCB` یا `struct thread` آزاد می‌شود؟ چرا این حافظه را نمی‌توانیم به کمک صدازدن تابع ‍`palloc_free_page` داخل تابع ‍`thread_exit` آزاد کنیم؟
 
 زمانی که تابع
