@@ -25,6 +25,33 @@
 
 >> پرسش اول: تعریف `struct`های جدید، `struct`های تغییر داده شده، متغیرهای گلوبال یا استاتیک، `typedef`ها یا `enumeration`ها را در اینجا آورده و برای هریک در 25 کلمه یا کمتر توضیح بنویسید.
 
+```c
+/* An ordered static list,
+ * containing all the threads that are currently sleeping.
+ */
+static struct list sleeping_threads;
+
+/* A lock for synchronizing access to the `sleeping_threads` list. */
+static struct lock sleep_lock;
+```
+
+```c
+typedef uint64_t ticks_t;
+
+/* Additions to `struct thread`. */
+struct thread {
+    ...
+    /* When the thread will wake up, if sleeping,
+     * expressed in `TICK`s counting from the kernel startup.
+     */
+    ticks_t sleeping_ticks;
+
+    /* `struct list_elem` for the `struct list sleeping_threads`. */
+    struct list_elem sleeping_list_elem;
+    ...
+};
+```
+
 ### الگوریتم
 
 >> پرسش دوم: به اختصار آن‌چه هنگام صدا زدن تابع `timer_sleep()` رخ می‌دهد و همچنین اثر `timer interrupt handler` را توضیح دهید.
