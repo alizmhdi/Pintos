@@ -30,9 +30,6 @@
  * containing all the threads that are currently sleeping.
  */
 static struct list sleeping_threads;
-
-/* A lock for synchronizing access to the `sleeping_threads` list. */
-static struct lock sleep_lock;
 ```
 
 ```c
@@ -44,10 +41,13 @@ struct thread {
     /* When the thread will wake up, if sleeping,
      * expressed in `TICK`s counting from the kernel startup.
      */
-    ticks_t sleeping_ticks;
+    ticks_t wake_up_tick;
 
-    /* `struct list_elem` for the `struct list sleeping_threads`. */
-    struct list_elem sleeping_list_elem;
+    /* `struct list_elem` for the `struct list sleeping_threads`.
+     * It is shared between different linked lists,
+     * because a `struct thread` is not a member of
+     * more than one of these lists at any given time. */
+    struct list_elem elem;
     ...
 };
 ```
@@ -56,17 +56,66 @@ struct thread {
 
 >> پرسش دوم: به اختصار آن‌چه هنگام صدا زدن تابع `timer_sleep()` رخ می‌دهد و همچنین اثر `timer interrupt handler` را توضیح دهید.
 
+#### الگوریتم `timer_sleep`
+
+**۱.** تمام interruptهای سیستم را disable می‌کنیم.
+
+**۲.** صفت `wake_up_tick` از threadی که `timer_sleep` را صدا زده است مقداردهی می‌شود. این مقدار از رابطه زیر به دست می‌آید:
+
+$$wake\_up\_tick = current\_kernel\_ticks + sleep\_ticks$$
+
+**۳.** سپس thread موردنظر به `struct list sleeping_threads` به‌صورت ordered اضافه می‌شود.
+
+**۴.** این thread را block می‌کنیم.
+
+**۵.** دوباره interruptهای سیستم را به level قبل برمی‌گردانیم.
+
+#### الگوریتم timer interrupt handler
+
+**۱.** ابتدا بررسی می‌کنیم که آیا `sleeping_thread` خالی‌ست یا نه. درصورتی‌که خالی بود برمی‌گردیم.
+
+**۲.** سپس یک iteration روی `sleeping_threads` انجام می‌دهیم. درصورتی‌که `wake_up_tick` هنوز فرا نرسیده بود برمی‌گردیم. درصورتی‌که رسیده بود ابتدا interruptها را disable می‌کنیم، thread را unblock می‌کنیم و دوباره interruptها را به level قبلی باز می‌گردانیم.
+
 >> پرسش سوم: مراحلی که برای کوتاه کردن زمان صرف‌شده در `timer interrupt handler` صرف می‌شود را نام ببرید.
+
+**۱.** تنها یک‌بار `timer_ticks` را صدا می‌زنیم و در ادامه، از همان مقدار استفاده می‌کنیم.
+
+**۲.** درصورتی‌که `struct list sleeping_threads‍` خالی بود برمی‌گردیم.
+
+**۳.** همواره `sleeping_threds` را مرتب نگه می‌داریم و به همین دلیل، لازم نیست تمام آن را iterate کنیم. هرجایی که `wake_up_tick` هنوز فرا نرسیده بود برمی‌گردیم.
 
 ### همگام‌سازی
 
 >> پرسش چهارم: هنگامی که چند ریسه به طور همزمان `timer_sleep()` را صدا می‌زنند، چگونه از `race condition` جلوگیری می‌شود؟
 
+تنها محل بروز race condition زمان اضافه‌کردن thread به `struct list sleeping_threads` است که برای آن interruptها را disable کرده‌ایم.
+
+در حقیقت، زمانی که thread دارد به `sleeping_threads` اضافه می‌شود هیچ مکانیزمی مانع اجرای کد نمی‌شود و مطمئنا بدون race condition این کد اجرا می‌شود.
+
 >> پرسش پنجم: هنگام صدا زدن `timer_sleep()` اگر یک وقفه ایجاد شود چگونه از `race condition` جلوگیری می‌شود؟
 
+تمام interruptها disable می‌شوند و درنتیجه هیچ مانعی برای اجرای کد وجود نخواهد داشت.
 ### منطق
 
 >> پرسش ششم: چرا این طراحی را استفاده کردید؟ برتری طراحی فعلی خود را بر طراحی‌های دیگری که مدنظر داشته‌اید بیان کنید.
+
+یک طراحی جایگزین، می‌توانست این باشد:
+
+```c
+struct sleeping_thread {
+    struct thrad *thread;
+    ticks_t wake_up_tick;
+    struct list_elem elem;
+};
+```
+
+که `struct list sleeping_threads` به‌جای `struct thread`ها، `struct sleeping_thread‍` ها را نگه دارد.
+
+مزیت طراحی ما، سادگی و کم‌تربودن allocationهاست.
+
+استفاده از یک لیست `static` برای نگه‌داری threadهای درحال sleep راه ساده‌ای است که مشابه راه‌حل‌ها در زمینه‌ی running threads است.
+
+برای بهبود performance نیز `struct list sleeping_threads` را مرتب نگه می‌داریم.
 
 ## زمان‌بند اولویت‌دار
 
