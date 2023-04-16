@@ -337,10 +337,10 @@ edi (esp+0)
 ```
 int main() { // we assume main has priority 1
 	semaphore s1(1) , s2(0);
-	thread_run(T1);
+	thread_create(T1);
 	thread_yield();
-    thread_run(T3);
-	thread_run(T2);
+    thread_create(T3);
+	thread_create(T2);
 	thread_yield();
 	return 0;
 }
@@ -367,7 +367,7 @@ thread T3 with base priority 3:
 `s1`
 و
 `s2`
-به ترتیب برابر 0 و 1
+به ترتیب برابر 1 و 0
 قرار داده شده‌اند و سپس
 ترد 
 `T1`
