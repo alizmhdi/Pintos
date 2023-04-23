@@ -25,7 +25,6 @@ typedef int tid_t;
 #define PRI_MIN 0                       /* Lowest priority. */
 #define PRI_DEFAULT 31                  /* Default priority. */
 #define PRI_MAX 63                      /* Highest priority. */
-#define MAX_OPEN_FILE 16
 
 /* A kernel thread or user process.
 
@@ -83,25 +82,6 @@ typedef int tid_t;
    only because they are mutually exclusive: only a thread in the
    ready state is on the run queue, whereas only a thread in the
    blocked state is on a semaphore wait list. */
-struct process_status { 
-    int pid;
-    bool exited;
-    int exit_code;
-    struct semaphore sema;
-    struct list_elem elem;
-    /* we define this variable to dedicate number of threads that access to this status and use it for free space
-       at the begining this variable set to 2 (parent and child) */
-    int ref_count;
-    /* for locking ref_count for Avoiding race condition */
-    struct lock lock; 
-};
-
-struct ts
-{
-   char *file_name;
-   struct process_status *ps;
-};
-
 struct thread
   {
     /* Owned by thread.c. */
@@ -118,22 +98,11 @@ struct thread
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
-
-    /* executable that is running by the thread*/
-    struct file *file_exec;
 #endif
-   // list of all the child threads
-  struct list children;
 
-  // status of this thread (beacause only one thread can run in a proccess)
-  struct process_status * tstatus;
-
-  // list of all file descriptors for this thread
-  struct file * file_descriptors[MAX_OPEN_FILE];
-
-  /* Owned by thread.c. */
-  unsigned magic;                     /* Detects stack overflow. */
-};
+    /* Owned by thread.c. */
+    unsigned magic;                     /* Detects stack overflow. */
+  };
 
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.
