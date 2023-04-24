@@ -249,6 +249,17 @@ thread_name (void)
   return thread_current ()->name;
 }
 
+/* if a thread in ready state we remove this thread from list and reorder the list. */
+void
+thread_update_ready (struct thread* t)
+{
+  if (t->status == THREAD_READY)
+  {
+    list_remove (&t->elem);
+    list_insert_ordered (&ready_list, &t->elem, thread_priority_cmp, NULL);
+  } 
+}
+
 /* Returns the running thread.
    This is running_thread() plus a couple of sanity checks.
    See the big comment at the top of thread.h for details. */
@@ -470,7 +481,7 @@ init_thread (struct thread *t, const char *name, int priority)
 }
 
 bool 
-thread_priority_cmp (const struct list_elem *a, const struct list_elem *b)
+thread_priority_cmp (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED)
 {
   const struct thread *t_a = list_entry (a, struct thread, elem);
   const struct thread *t_b = list_entry (b, struct thread, elem);

@@ -98,7 +98,6 @@ struct thread
     struct list_elem elem;              /* List element. */
     
     int base_priority;
-    int priority;
     struct list locks;
     struct lock *wait_lock;
 
@@ -141,7 +140,8 @@ void thread_foreach (thread_action_func *, void *);
 
 int thread_get_priority (void);
 void thread_set_priority (int);
-bool thread_priority_cmp (const struct list_elem*, const struct list_elem*);
+bool thread_priority_cmp (const struct list_elem*, const struct list_elem*, void*);
+void thread_update_ready (struct thread* t);
 
 int thread_get_nice (void);
 void thread_set_nice (int);
