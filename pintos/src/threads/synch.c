@@ -231,7 +231,7 @@ lock_acquire (struct lock *lock)
   lock->holder = thread_current ();
   lock->holder->wait_lock = NULL;
 
-  list_push_back (&lock->holder->locks, &lock->lock_elem);
+  list_push_back (&lock->holder->locks, &lock->elem);
   intr_set_level (old_level);  
 }
 
@@ -266,8 +266,26 @@ lock_release (struct lock *lock)
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
 
+  enum intr_level old_level = intr_disable ();
+  struct thread *t = thread_current ();
+
   lock->holder = NULL;
   sema_up (&lock->semaphore);
+
+  list_remove (&lock->elem);
+  lock->priority = BASE_PRIORITY;
+
+  if (!list_empty (&t->locks))
+  {
+    struct lock *first_lock = list_entry (list_front (&t->locks), struct lock, elem);
+    if (first_lock->priority != BASE_PRIORITY)
+      t->priority = first_lock->priority;
+  }
+  else
+    t->priority = t->base_priority;
+
+  thread_yield ();
+  intr_set_level (old_level);
 }
 
 /* Returns true if the current thread holds LOCK, false
