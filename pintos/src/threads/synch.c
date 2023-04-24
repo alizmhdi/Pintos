@@ -186,7 +186,7 @@ lock_init (struct lock *lock)
   ASSERT (lock != NULL);
 
   lock->holder = NULL;
-  lock->priority = -1;
+  lock->priority = BASE_PRIORITY;
   sema_init (&lock->semaphore, 1);
 }
 
@@ -255,6 +255,14 @@ lock_try_acquire (struct lock *lock)
   return success;
 }
 
+bool lock_priority_cmp (const struct list_elem *elem1, const struct list_elem *elem2, void *aux UNUSED)
+{
+  const struct lock *l1 = list_entry (elem1, struct lock, elem);
+  const struct lock *l2 = list_entry (elem2, struct lock, elem);
+
+  return l1->priority > l2->priority;
+}
+
 /* Releases LOCK, which must be owned by the current thread.
 
    An interrupt handler cannot acquire a lock, so it does not
@@ -270,21 +278,20 @@ lock_release (struct lock *lock)
   struct thread *t = thread_current ();
 
   lock->holder = NULL;
-  sema_up (&lock->semaphore);
 
   list_remove (&lock->elem);
   lock->priority = BASE_PRIORITY;
 
   if (!list_empty (&t->locks))
   {
-    struct lock *first_lock = list_entry (list_front (&t->locks), struct lock, elem);
+    struct lock *first_lock = list_entry (list_min (&t->locks, lock_priority_cmp, NULL), struct lock, elem);
     if (first_lock->priority != BASE_PRIORITY)
       t->priority = first_lock->priority;
   }
   else
     t->priority = t->base_priority;
 
-  thread_yield ();
+  sema_up (&lock->semaphore);
   intr_set_level (old_level);
 }
 
