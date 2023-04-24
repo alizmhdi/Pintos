@@ -25,6 +25,8 @@ typedef int tid_t;
 #define PRI_MIN 0                       /* Lowest priority. */
 #define PRI_DEFAULT 31                  /* Default priority. */
 #define PRI_MAX 63                      /* Highest priority. */
+# define BASE_PRIORITY -1
+# define MAX_DONATION_LEVEL 5
 
 /* A kernel thread or user process.
 
@@ -94,6 +96,11 @@ struct thread
 
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
+    
+    int base_priority;
+    int priority;
+    struct list locks;
+    struct lock *wait_lock;
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
@@ -134,6 +141,7 @@ void thread_foreach (thread_action_func *, void *);
 
 int thread_get_priority (void);
 void thread_set_priority (int);
+bool thread_priority_cmp (const struct list_elem*, const struct list_elem*);
 
 int thread_get_nice (void);
 void thread_set_nice (int);

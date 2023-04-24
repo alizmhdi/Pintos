@@ -469,6 +469,15 @@ init_thread (struct thread *t, const char *name, int priority)
   intr_set_level (old_level);
 }
 
+bool 
+thread_priority_cmp (const struct list_elem *a, const struct list_elem *b)
+{
+  const struct thread *t_a = list_entry (a, struct thread, elem);
+  const struct thread *t_b = list_entry (b, struct thread, elem);
+
+  return t_a->priority > t_b->priority;
+}
+
 /* Allocates a SIZE-byte frame at the top of thread T's stack and
    returns a pointer to the frame's base. */
 static void *
