@@ -11,6 +11,7 @@
 #include "threads/switch.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
+#include "devices/timer.h"
 #ifdef USERPROG
 #include "userprog/process.h"
 #endif
@@ -27,6 +28,11 @@ static struct list ready_list;
 /* List of all processes.  Processes are added to this list
    when they are first scheduled and removed when they exit. */
 static struct list all_list;
+
+/* An ordered static list,
+ * containing all the threads that are currently sleeping.
+ */
+static struct list sleeping_list;
 
 /* Idle thread. */
 static struct thread *idle_thread;
@@ -92,6 +98,7 @@ thread_init (void)
   lock_init (&tid_lock);
   list_init (&ready_list);
   list_init (&all_list);
+  list_init (&sleeping_list);
 
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
@@ -137,6 +144,41 @@ thread_tick (void)
   /* Enforce preemption. */
   if (++thread_ticks >= TIME_SLICE)
     intr_yield_on_return ();
+
+  if (list_empty (&sleeping_list))
+    return;
+
+  struct list_elem *e = list_begin (&sleeping_list); 
+
+  while (e != list_end (&sleeping_list)) {
+
+    struct list_elem *next_e = list_next (e);
+    struct thread *t = list_entry (e, struct thread, elem);
+    if (t->wake_up_tick > timer_ticks())
+        return;
+
+      enum intr_level old_level = intr_disable ();
+      list_remove (e); 
+      thread_unblock (t);
+      intr_set_level (old_level);
+
+    e = next_e;
+
+  }
+  
+}
+
+/* Puts current thread on sleeping_list list and sets appropriate wake_up_tick. */
+void
+thread_sleep (ticks_t ticks)
+{
+  struct thread *t = thread_current();
+
+  enum intr_level old_level = intr_disable ();
+  t->wake_up_tick = timer_ticks() + ticks;
+  list_insert_ordered (&sleeping_list, &t->elem, thread_wake_cmp, NULL);
+  thread_block ();
+  intr_set_level (old_level);
 }
 
 /* Prints thread statistics. */
@@ -347,10 +389,17 @@ thread_foreach (thread_action_func *func, void *aux)
 void
 thread_set_priority (int new_priority)
 {
-  thread_current ()->base_priority = new_priority;
-  thread_current ()->priority = new_priority;
-  
+  enum intr_level old_level = intr_disable ();
+  struct thread* t = thread_current ();
+
+  if (t->base_priority!= t->priority && new_priority <= t->priority)
+    t->base_priority = new_priority;
+  else
+    t->priority = t->base_priority = new_priority;
+
   thread_yield ();
+
+  intr_set_level (old_level);
 }
 
 /* Returns the current thread's priority. */
@@ -490,6 +539,15 @@ thread_priority_cmp (const struct list_elem *a, const struct list_elem *b, void 
   const struct thread *t_b = list_entry (b, struct thread, elem);
 
   return t_a->priority > t_b->priority;
+}
+
+bool
+thread_wake_cmp (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED)
+{
+  const struct thread *t_a = list_entry (a, struct thread, elem);
+  const struct thread *t_b = list_entry (b, struct thread, elem);
+
+  return t_a->wake_up_tick < t_b->wake_up_tick;
 }
 
 /* Allocates a SIZE-byte frame at the top of thread T's stack and
