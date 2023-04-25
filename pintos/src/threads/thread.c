@@ -547,7 +547,7 @@ thread_wake_cmp (const struct list_elem *a, const struct list_elem *b, void *aux
   const struct thread *t_a = list_entry (a, struct thread, elem);
   const struct thread *t_b = list_entry (b, struct thread, elem);
 
-  return t_a->wake_up_tick > t_b->wake_up_tick;
+  return t_a->wake_up_tick < t_b->wake_up_tick;
 }
 
 /* Allocates a SIZE-byte frame at the top of thread T's stack and
