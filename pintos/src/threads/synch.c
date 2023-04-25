@@ -188,6 +188,7 @@ lock_init (struct lock *lock)
   lock->holder = NULL;
   lock->priority = BASE_PRIORITY;
   sema_init (&lock->semaphore, 1);
+  
 }
 
 /* Acquires LOCK, sleeping until it becomes available if
@@ -221,6 +222,7 @@ lock_acquire (struct lock *lock)
     {
       t->wait_lock->priority = t->priority;
       t->wait_lock->holder->priority = t->priority;
+      t->wait_lock->holder->is_donated = true;
       thread_update_ready (t->wait_lock->holder);
       t = t->wait_lock->holder;
     }
@@ -255,7 +257,8 @@ lock_try_acquire (struct lock *lock)
   return success;
 }
 
-bool lock_priority_cmp (const struct list_elem *elem1, const struct list_elem *elem2, void *aux UNUSED)
+bool 
+lock_priority_cmp (const struct list_elem *elem1, const struct list_elem *elem2, void *aux UNUSED)
 {
   const struct lock *l1 = list_entry (elem1, struct lock, elem);
   const struct lock *l2 = list_entry (elem2, struct lock, elem);
@@ -281,16 +284,20 @@ lock_release (struct lock *lock)
 
   list_remove (&lock->elem);
   lock->priority = BASE_PRIORITY;
-
+  t->priority = t->base_priority;
+  
   if (!list_empty (&t->locks))
   {
     struct lock *first_lock = list_entry (list_min (&t->locks, lock_priority_cmp, NULL), struct lock, elem);
     if (first_lock->priority != BASE_PRIORITY)
+    {
       t->priority = first_lock->priority;
+      t->is_donated = true;
+    }
   }
   else
-    t->priority = t->base_priority;
-
+    t->is_donated = false;
+  
   sema_up (&lock->semaphore);
   intr_set_level (old_level);
 }
@@ -328,8 +335,8 @@ cond_init (struct condition *cond)
 bool 
 cond_priority_cmp (const struct list_elem *elem1, const struct list_elem *elem2, void *aux UNUSED)
 {
-  const struct semaphore_elem *c1 = list_entry (elem1, struct lock, elem);
-  const struct semaphore_elem *c2 = list_entry (elem2, struct lock, elem);
+  const struct semaphore_elem *c1 = list_entry (elem1, struct semaphore_elem, elem);
+  const struct semaphore_elem *c2 = list_entry (elem2, struct semaphore_elem, elem);
 
   return c1->priority > c2->priority;
 }

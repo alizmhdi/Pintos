@@ -29,7 +29,7 @@ typedef uint64_t ticks_t;
 #define PRI_DEFAULT 31                  /* Default priority. */
 #define PRI_MAX 63                      /* Highest priority. */
 # define BASE_PRIORITY -1
-# define MAX_DONATION_LEVEL 5
+# define MAX_DONATION_LEVEL 10
 
 /* A kernel thread or user process.
 
@@ -103,6 +103,7 @@ struct thread
     struct list_elem elem;              /* List element. */
     
     int base_priority;
+    bool is_donated;
     struct list locks;
     struct lock *wait_lock;
 
