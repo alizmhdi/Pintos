@@ -21,6 +21,9 @@ enum thread_status
 typedef int tid_t;
 #define TID_ERROR ((tid_t) -1)          /* Error value for tid_t. */
 
+/* Timer tick type. */
+typedef uint64_t ticks_t;
+
 /* Thread priorities. */
 #define PRI_MIN 0                       /* Lowest priority. */
 #define PRI_DEFAULT 31                  /* Default priority. */
@@ -93,6 +96,8 @@ struct thread
     uint8_t *stack;                     /* Saved stack pointer. */
     int priority;                       /* Priority. */
     struct list_elem allelem;           /* List element for all threads list. */
+    
+    ticks_t wake_up_tick;                 /* When the thread will wake up, if sleeping. */
 
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
@@ -119,6 +124,7 @@ void thread_init (void);
 void thread_start (void);
 
 void thread_tick (void);
+void thread_sleep (ticks_t ticks);
 void thread_print_stats (void);
 
 typedef void thread_func (void *aux);
@@ -141,6 +147,7 @@ void thread_foreach (thread_action_func *, void *);
 int thread_get_priority (void);
 void thread_set_priority (int);
 bool thread_priority_cmp (const struct list_elem*, const struct list_elem*, void*);
+bool thread_wake_cmp (const struct list_elem*, const struct list_elem*, void*);
 void thread_update_ready (struct thread* t);
 
 int thread_get_nice (void);
