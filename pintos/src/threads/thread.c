@@ -32,7 +32,7 @@ static struct list all_list;
 /* An ordered static list,
  * containing all the threads that are currently sleeping.
  */
-static struct list sleeping_list;
+static struct list sleeping_threads;
 
 /* Idle thread. */
 static struct thread *idle_thread;
@@ -76,6 +76,7 @@ static void *alloc_frame (struct thread *, size_t size);
 static void schedule (void);
 void thread_schedule_tail (struct thread *prev);
 static tid_t allocate_tid (void);
+static bool thread_wake_cmp (const struct list_elem*, const struct list_elem*, void* UNUSED);
 
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
@@ -98,7 +99,7 @@ thread_init (void)
   lock_init (&tid_lock);
   list_init (&ready_list);
   list_init (&all_list);
-  list_init (&sleeping_list);
+  list_init (&sleeping_threads);
 
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
@@ -145,39 +146,58 @@ thread_tick (void)
   if (++thread_ticks >= TIME_SLICE)
     intr_yield_on_return ();
 
-  if (list_empty (&sleeping_list))
+  /* If `sleeping_threads` is empty, there is no thread to wake up
+     and we are done. */
+  if (list_empty (&sleeping_threads))
     return;
 
-  struct list_elem *e = list_begin (&sleeping_list); 
+  struct list_elem *elem = list_begin (&sleeping_threads); 
+  struct list_elem *next_elem;
+  ticks_t timer_tick = timer_ticks ();
 
-  while (e != list_end (&sleeping_list)) {
+  /* Iterate over `sleeping_threads` to wake up
+     any  threads  that  must  be   woken   up. */
+  while (elem != list_end (&sleeping_threads))
+    {
+      struct thread *t = list_entry (elem, struct thread, elem);
 
-    struct list_elem *next_e = list_next (e);
-    struct thread *t = list_entry (e, struct thread, elem);
-    if (t->wake_up_tick > timer_ticks())
-        return;
+      /* The list is ordered, so when we reach threads
+         that shouldn't be woken up yet,  we are done. */
+      if (t->wake_up_tick > timer_tick)
+          return;
 
+      next_elem = list_next (elem);
+    
+      /* Disable the interrupts as an extreme means of synchronization. */
       enum intr_level old_level = intr_disable ();
-      list_remove (e); 
+
+      list_remove (elem);
       thread_unblock (t);
+
       intr_set_level (old_level);
 
-    e = next_e;
-
-  }
-  
+      elem = next_elem;
+    }
 }
 
-/* Puts current thread on sleeping_list list and sets appropriate wake_up_tick. */
+/* Puts current thread on `struct list sleeping_threads` and sets appropriate wake_up_tick. */
 void
 thread_sleep (ticks_t ticks)
 {
-  struct thread *t = thread_current();
+  struct thread *t = thread_current ();
 
+  /* Disable the interrupts as an extreme means of synchronization. */
   enum intr_level old_level = intr_disable ();
-  t->wake_up_tick = timer_ticks() + ticks;
-  list_insert_ordered (&sleeping_list, &t->elem, thread_wake_cmp, NULL);
+
+  /* Calculate the timer tick in which the thread must be woken up. */
+  t->wake_up_tick = timer_ticks () + ticks;
+
+  /* Insert the thread and keeping the list ordered. */
+  list_insert_ordered (&sleeping_threads, &t->elem, thread_wake_cmp, NULL);
+
+  /* Putting the thread to sleep. */
   thread_block ();
+
   intr_set_level (old_level);
 }
 
