@@ -103,7 +103,6 @@ struct thread
     struct list_elem elem;              /* List element. */
     
     int base_priority;
-    bool is_donated;
     struct list locks;
     struct lock *wait_lock;
 

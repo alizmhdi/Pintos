@@ -222,7 +222,6 @@ lock_acquire (struct lock *lock)
     {
       t->wait_lock->priority = t->priority;
       t->wait_lock->holder->priority = t->priority;
-      t->wait_lock->holder->is_donated = true;
       thread_update_ready (t->wait_lock->holder);
       t = t->wait_lock->holder;
     }
@@ -290,13 +289,8 @@ lock_release (struct lock *lock)
   {
     struct lock *first_lock = list_entry (list_min (&t->locks, lock_priority_cmp, NULL), struct lock, elem);
     if (first_lock->priority != BASE_PRIORITY)
-    {
       t->priority = first_lock->priority;
-      t->is_donated = true;
-    }
   }
-  else
-    t->is_donated = false;
   
   sema_up (&lock->semaphore);
   intr_set_level (old_level);
