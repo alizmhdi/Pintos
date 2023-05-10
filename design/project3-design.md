@@ -383,7 +383,7 @@ parent directory
 همیشه یک
 فردی که درس را ندارد به گروهتان اضافه کنید تا
 اعضای گروه را 
-support 
+emotional support.
 کند پیشنهاد گروه ما
 Hossein Goli 
 است. :)))
