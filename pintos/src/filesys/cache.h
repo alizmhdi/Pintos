@@ -16,7 +16,7 @@ typedef struct cache_block
     bool is_valid;
     bool is_dirty;
     struct list_elem elem; 
-    struct lock cache_lock;
+    struct lock block_lock;
   } cache_block_t;
 
 
