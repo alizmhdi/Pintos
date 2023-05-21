@@ -20,11 +20,7 @@ struct inode_disk
     block_sector_t start;               /* First data sector. */
     off_t length;                       /* File size in bytes. */
     unsigned magic;                     /* Magic number. */
-    bool is_dir;                        /* for spesify dir. */
-
-    block_sector_t direct[123];         /* Direct blocks. */
-    block_sector_t indirect;            /* Indirect blocks. */
-    block_sector_t double_indirect;     /* Double indirect. */
+    uint32_t unused[125];               /* Not used. */
   };
 
 /* Returns the number of sectors to allocate for an inode SIZE
@@ -43,7 +39,6 @@ struct inode
     bool removed;                       /* True if deleted, false otherwise. */
     int deny_write_cnt;                 /* 0: writes ok, >0: deny writes. */
     struct inode_disk data;             /* Inode content. */
-    struct lock f_lock;                 /* Added for  Synchronization. */
   };
 
 /* Returns the block device sector that contains byte offset POS

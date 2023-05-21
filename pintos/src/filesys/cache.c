@@ -1,4 +1,5 @@
 #include <string.h>
+#include <debug.h>
 #include "cache.h"
 #include "filesys.h"
 
