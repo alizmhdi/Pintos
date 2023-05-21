@@ -11,6 +11,7 @@ struct dir
   {
     struct inode *inode;                /* Backing store. */
     off_t pos;                          /* Current position. */
+    // TODO(add lock)
   };
 
 /* A single directory entry. */
@@ -26,6 +27,7 @@ struct dir_entry
 bool
 dir_create (block_sector_t sector, size_t entry_cnt)
 {
+  // TODO
   return inode_create (sector, entry_cnt * sizeof (struct dir_entry));
 }
 
@@ -62,6 +64,7 @@ dir_open_root (void)
 struct dir *
 dir_reopen (struct dir *dir)
 {
+  // TODO check dir is not null
   return dir_open (inode_reopen (dir->inode));
 }
 
@@ -80,6 +83,7 @@ dir_close (struct dir *dir)
 struct inode *
 dir_get_inode (struct dir *dir)
 {
+  // TODO check dir is not null
   return dir->inode;
 }
 
@@ -119,6 +123,7 @@ bool
 dir_lookup (const struct dir *dir, const char *name,
             struct inode **inode)
 {
+  // TODO
   struct dir_entry e;
 
   ASSERT (dir != NULL);
@@ -141,6 +146,7 @@ dir_lookup (const struct dir *dir, const char *name,
 bool
 dir_add (struct dir *dir, const char *name, block_sector_t inode_sector)
 {
+  // TODO
   struct dir_entry e;
   off_t ofs;
   bool success = false;
@@ -184,6 +190,7 @@ dir_add (struct dir *dir, const char *name, block_sector_t inode_sector)
 bool
 dir_remove (struct dir *dir, const char *name)
 {
+  // TODO
   struct dir_entry e;
   struct inode *inode = NULL;
   bool success = false;
@@ -221,6 +228,7 @@ dir_remove (struct dir *dir, const char *name)
 bool
 dir_readdir (struct dir *dir, char name[NAME_MAX + 1])
 {
+  // TODO
   struct dir_entry e;
 
   while (inode_read_at (dir->inode, &e, sizeof e, dir->pos) == sizeof e)

@@ -115,10 +115,26 @@ syscall_handler (struct intr_frame *f UNUSED)
   case SYS_WAIT:
     syscall_wait (f, args, current_thread);
     break;
+  case SYS_CHDIR:
+    // TODO
+    break;
+  case SYS_MKDIR:
+    // TODO
+    break;
+  case SYS_READDIR:
+    // TODO
+    break; 
+  case SYS_ISDIR:
+    // TODO
+    break; 
+  case SYS_INUMBER:
+    // TODO
+    break;
   default:
     break;
   }
 }
+
 
 static void
 syscall_practice (struct intr_frame *f, uint32_t *args)
@@ -358,3 +374,38 @@ syscall_wait (struct intr_frame *f, uint32_t *args, struct thread *current_threa
   
   f->eax = process_wait (child_tid);
 }
+
+static void
+syscall_chdir (struct intr_frame *f, uint32_t *args, struct thread *current_thread)
+{ 
+  // TODO
+}
+
+static void
+syscall_mkdir (struct intr_frame *f, uint32_t *args, struct thread *current_thread)
+{ 
+  // TODO
+}
+
+static void
+syscall_readdir (struct intr_frame *f, uint32_t *args, struct thread *current_thread)
+{ 
+  // TODO
+}
+
+static void
+syscall_isdir (struct intr_frame *f, uint32_t *args, struct thread *current_thread)
+{ 
+  // TODO
+}
+
+static void
+syscall_inumber (struct intr_frame *f, uint32_t *args, struct thread *current_thread)
+{ 
+  // TODO
+}
+
+
+
+
+
