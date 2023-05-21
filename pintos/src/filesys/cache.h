@@ -20,11 +20,17 @@ typedef struct cache_block
   } cache_block_t;
 
 
-cache_block_t cache_blocks[CACHE_SIZE];
+static cache_block_t cache_blocks[CACHE_SIZE];
+static struct list cache_list;
+static struct lock cache_lock;
 
-struct list cache_list;
+static int cache_initialized = 0;
 
-struct lock cache_lock;
+static long long hit_count;
+static long long miss_count;
+static long long access_count;
+static struct lock stat_lock;
+
 
 
 void cache_init (void);
