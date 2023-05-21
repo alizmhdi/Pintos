@@ -22,13 +22,26 @@ struct dir_entry
     bool in_use;                        /* In use or free? */
   };
 
+
 /* Creates a directory with space for ENTRY_CNT entries in the
    given SECTOR.  Returns true if successful, false on failure. */
 bool
 dir_create (block_sector_t sector, size_t entry_cnt)
 {
-  // TODO
-  return inode_create (sector, entry_cnt * sizeof (struct dir_entry));
+  if (! inode_create (sector, entry_cnt * sizeof (struct dir_entry)))
+    return false;
+  
+  struct inode *inode_dir = inode_open (sector);
+  
+  struct dir_entry entry;
+  entry.inode_sector = sector;
+  entry.in_use = false;
+
+  bool succeeded = sizeof entry == inode_write_at (inode_dir, &entry, sizeof entry, 0);
+  
+  inode_close (inode_dir);
+
+  return succeeded;
 }
 
 /* Opens and returns the directory for the given INODE, of which
@@ -64,7 +77,7 @@ dir_open_root (void)
 struct dir *
 dir_reopen (struct dir *dir)
 {
-  // TODO check dir is not null
+  ASSERT(NULL != dir);
   return dir_open (inode_reopen (dir->inode));
 }
 
@@ -83,7 +96,7 @@ dir_close (struct dir *dir)
 struct inode *
 dir_get_inode (struct dir *dir)
 {
-  // TODO check dir is not null
+  ASSERT(NULL != dir);
   return dir->inode;
 }
 

@@ -25,6 +25,11 @@ static void syscall_seek(struct intr_frame *, uint32_t *, struct thread *);
 static void syscall_tell(struct intr_frame *, uint32_t *, struct thread *);
 static void syscall_exec(struct intr_frame *, uint32_t *, struct thread *);
 static void syscall_wait(struct intr_frame *, uint32_t *, struct thread *);
+static void syscall_chdir(struct intr_frame *, uint32_t *, struct thread *);
+static void syscall_mkdir(struct intr_frame *, uint32_t *, struct thread *);
+static void syscall_readdir(struct intr_frame *, uint32_t *, struct thread *);
+static void syscall_isdir(struct intr_frame *, uint32_t *, struct thread *);
+static void syscall_inumber(struct intr_frame *, uint32_t *, struct thread *);
 
 struct lock file_lock;
 
@@ -116,19 +121,19 @@ syscall_handler (struct intr_frame *f UNUSED)
     syscall_wait (f, args, current_thread);
     break;
   case SYS_CHDIR:
-    // TODO
+    syscall_chdir (f, args, current_thread);
     break;
   case SYS_MKDIR:
-    // TODO
+    syscall_mkdir (f, args, current_thread);
     break;
   case SYS_READDIR:
-    // TODO
+    syscall_readdir (f, args, current_thread);
     break; 
   case SYS_ISDIR:
-    // TODO
+    syscall_isdir (f, args, current_thread);
     break; 
   case SYS_INUMBER:
-    // TODO
+    syscall_inumber (f, args, current_thread);
     break;
   default:
     break;
@@ -193,7 +198,7 @@ syscall_create (struct intr_frame *f, uint32_t *args)
 
 
   lock_acquire (&file_lock);
-  f->eax = filesys_create (name, size);
+  f->eax = filesys_create (name, size, false);
   lock_release (&file_lock);
 }
 
