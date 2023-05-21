@@ -19,20 +19,6 @@ typedef struct cache_block
     struct lock block_lock;
   } cache_block_t;
 
-
-static cache_block_t cache_blocks[CACHE_SIZE];
-static struct list cache_list;
-static struct lock cache_lock;
-
-static int cache_initialized = 0;
-
-static long long hit_count;
-static long long miss_count;
-static long long access_count;
-static struct lock stat_lock;
-
-
-
 void cache_init (void);
 
 void cache_write (struct block *fs_device, block_sector_t sector_idx, void *source, off_t offset, int chunk_size);

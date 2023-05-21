@@ -7,6 +7,17 @@
 #define miss 0
 #define access -1
 
+static cache_block_t cache_blocks[CACHE_SIZE];
+static struct list cache_list;
+static struct lock cache_lock;
+
+static int cache_initialized = 0;
+
+static long long hit_count;
+static long long miss_count;
+static long long access_count;
+static struct lock stat_lock;
+
 static void
 stat_update (int mode)
 {
@@ -69,8 +80,8 @@ cache_evict (struct block *fs_device, struct cache_block *cache_block)
     block_write (fs_device, cache_block->sector_index, cache_block->data);
   }
 
-  cache_block->is_dirty = 0;
-  cache_block->is_valid = 0;
+  cache_block->is_dirty = false;
+  cache_block->is_valid = false;
 }
 
 /* Find cache block with current sector index, acquire the lock and return the block.
@@ -108,7 +119,7 @@ get_cache_block (struct block *fs_device, block_sector_t sector_idx)
   ASSERT (!lru_block->is_dirty && !lru_block->is_valid);
   block_read (fs_device, sector_idx, lru_block->data);
   lru_block->sector_index = sector_idx;
-  lru_block->is_valid = 1;
+  lru_block->is_valid = true;
   list_push_back (&cache_list, &lru_block->elem);
   lock_release (&cache_lock);
 
@@ -116,8 +127,24 @@ get_cache_block (struct block *fs_device, block_sector_t sector_idx)
 }
 
 void
+cache_write(struct block *fs_device, block_sector_t sector_idx, void *source, off_t offset, int chunk_size)
+{
+  ASSERT (cache_initialized);
+  ASSERT (fs_device != NULL);
+  ASSERT (offset + chunk_size <= BLOCK_SECTOR_SIZE);
+
+  struct cache_block *cache_block =  get_cache_block (fs_device, sector_idx);
+  ASSERT (lock_held_by_current_thread (&cache_block->block_lock));
+  ASSERT (cache_block->is_valid);
+  memcpy (&cache_block->data + offset, source, chunk_size);
+  cache_block->is_dirty = true;
+  lock_release (&cache_block->block_lock);
+}
+
+void
 cache_read (struct block *fs_device, block_sector_t sector_idx, void *destination, off_t offset, int chunk_size)
 {
+  ASSERT (cache_initialized);
   ASSERT (fs_device != NULL);
   ASSERT (offset + chunk_size <= BLOCK_SECTOR_SIZE);
 
@@ -128,3 +155,21 @@ cache_read (struct block *fs_device, block_sector_t sector_idx, void *destinatio
   memcpy (destination, cache_block->data + offset, chunk_size);
   lock_release (&cache_block->block_lock);
 }
+
+/* Evict all cache blocks and invalidate cache. */
+void
+cache_flush (struct block *fs_device)
+{
+  ASSERT (fs_device != NULL);
+
+  if (!cache_initialized)
+    return;
+
+  for (int i = 0; i < CACHE_SIZE; i++)
+  {
+    lock_acquire (&cache_blocks[i].block_lock);
+    cache_evict (fs_device, &cache_blocks[i]);
+    lock_release (&cache_blocks[i].block_lock);
+  }
+}
+
