@@ -1,7 +1,7 @@
 #include <string.h>
 #include "cache.h"
 #include "filesys.h"
-
+#include "debug.h"
 /* Defines used for updating cache stats. */
 #define hit 1
 #define miss 0
