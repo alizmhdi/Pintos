@@ -129,6 +129,7 @@ inode_create (block_sector_t sector, off_t length, bool is_directory)
   if (disk_inode != NULL)
   {
     disk_inode->length = length;
+    disk_inode->is_dir = is_directory; 
     disk_inode->magic = INODE_MAGIC;
     if (disk_allocate (disk_inode, length))
       {
