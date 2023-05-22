@@ -48,28 +48,32 @@ bool
 filesys_create (const char *name, off_t initial_size, bool is_dir)
 {
   block_sector_t inode_sector = 0;
-  // struct dir *dir = dir_open_root ();
-  struct dir *directory;
-  bool success;
   char last[NAME_MAX + 1];
-  
-  bool success = (split_path_dir(name, last, &directory)
-                  && last[0] != '\0'
-                  && directory != NULL
-                  && free_map_allocate (1, &inode_sector)
-                  && (is_dir
-                      ?dir_create (inode_sector, 16)
-                      :inode_create (inode_sector, initial_size, false))
-                  && dir_add (parent, tail, inode_sector));
+  struct dir *dir;
+  bool success;
 
-  bool success = (split_path_dir(path, last, &directory) != NULL
+  if (is_dir)
+  {
+    success = (split_path_dir(name, last, &dir)
+                  && strlen(last) > 0
+                  && dir != NULL
                   && free_map_allocate (1, &inode_sector)
-                  && inode_create (inode_sector, initial_size)
+                  && dir_create (inode_sector, 16)
                   && dir_add (dir, name, inode_sector));
-
+  }
+  else 
+  {
+    success = (split_path_dir(name, last, &dir)
+                  && strlen(last) > 0
+                  && dir != NULL
+                  && free_map_allocate (1, &inode_sector)
+                  && inode_create (inode_sector, initial_size, false)
+                  && dir_add (dir, name, inode_sector));
+  }
+  
   if (!success && inode_sector != 0)
     free_map_release (inode_sector, 1);
-  dir_close (directory);
+  dir_close (dir);
 
   return success;
 }
@@ -82,13 +86,28 @@ filesys_create (const char *name, off_t initial_size, bool is_dir)
 struct file *
 filesys_open (const char *name)
 {
-  // TODO
-  struct dir *dir = dir_open_root ();
+  
+  if(name[0] == '/' && name[1] == '\0')
+    return (struct file*) dir_open_root ();
+  
+  struct dir *dir = NULL;
   struct inode *inode = NULL;
+  struct file* result;
+  char last[NAME_MAX + 1];
+  split_path_dir (name, last , &dir);
 
   if (dir != NULL)
     dir_lookup (dir, name, &inode);
   dir_close (dir);
+
+  if (inode == NULL)
+    return NULL;
+
+  if (inode_isdir (inode))
+  {
+    result = (struct file*) dir_open (inode);
+    return result;
+  }
 
   return file_open (inode);
 }
@@ -100,10 +119,12 @@ filesys_open (const char *name)
 bool
 filesys_remove (const char *name)
 {
-  // TODO
-  struct dir *dir = dir_open_root ();
-  bool success = dir != NULL && dir_remove (dir, name);
-  dir_close (dir);
+  struct dir *directory;
+  char last[NAME_MAX + 1];
+  split_path_dir(name, last, &directory);
+ 
+  bool success = directory != NULL && dir_remove (directory, name);
+  dir_close (directory);
 
   return success;
 }

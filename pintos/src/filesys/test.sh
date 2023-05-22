@@ -1,8 +1,5 @@
 #!/bin/bash
 cd build
-pth="./tests/userprog/$1.result"
-if [[ $1 == "multi-oom" ]]; then
-    pth="./tests/userprog/no-vm/$1.result"
-fi
+pth="./tests/filesys/extended/$1.result"
 rm "$pth"
 make "$pth"

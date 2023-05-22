@@ -114,7 +114,7 @@ inode_init (void)
    Returns true if successful.
    Returns false if memory or disk allocation fails. */
 bool
-inode_create (block_sector_t sector, off_t length)
+inode_create (block_sector_t sector, off_t length, bool is_directory)
 {
   struct inode_disk *disk_inode = NULL;
   bool success = false;
@@ -373,6 +373,23 @@ bool
 inode_get_removed (const struct inode *inode)
 {
   return inode->removed;
+}
+
+bool inode_isdir_disk (struct inode_disk *inode_disk)
+{
+  return inode_disk->is_dir;
+}
+
+bool inode_isdir (struct inode *inode)
+{
+  if(inode == NULL)
+    return false;
+  struct inode_disk *inode_disk = read_inode(inode);
+  if (inode_disk == NULL)
+    return false;
+  bool res = inode_isdir_disk (inode_disk);
+  free(inode_disk);
+  return res;
 }
 
 /* Closes INODE and writes it to disk.
