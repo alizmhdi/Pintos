@@ -48,15 +48,28 @@ bool
 filesys_create (const char *name, off_t initial_size, bool is_dir)
 {
   block_sector_t inode_sector = 0;
-  // TODO
-  struct dir *dir = dir_open_root ();
-  bool success = (dir != NULL
+  // struct dir *dir = dir_open_root ();
+  struct dir *directory;
+  bool success;
+  char last[NAME_MAX + 1];
+  
+  bool success = (split_path_dir(name, last, &directory)
+                  && last[0] != '\0'
+                  && directory != NULL
+                  && free_map_allocate (1, &inode_sector)
+                  && (is_dir
+                      ?dir_create (inode_sector, 16)
+                      :inode_create (inode_sector, initial_size, false))
+                  && dir_add (parent, tail, inode_sector));
+
+  bool success = (split_path_dir(path, last, &directory) != NULL
                   && free_map_allocate (1, &inode_sector)
                   && inode_create (inode_sector, initial_size)
                   && dir_add (dir, name, inode_sector));
+
   if (!success && inode_sector != 0)
     free_map_release (inode_sector, 1);
-  dir_close (dir);
+  dir_close (directory);
 
   return success;
 }

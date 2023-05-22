@@ -9,6 +9,8 @@
 #include "threads/synch.h"
 #include "filesys/file.h"
 #include "filesys/filesys.h"
+#include "filesys/directory.h"
+#include "filesys/inode.h"
 #include "process.h"
 
 static void syscall_handler(struct intr_frame *);
@@ -383,13 +385,31 @@ syscall_wait (struct intr_frame *f, uint32_t *args, struct thread *current_threa
 static void
 syscall_chdir (struct intr_frame *f, uint32_t *args, struct thread *current_thread)
 { 
-  // TODO
+  char *path_name = (char*) args[1];
+  if (!check_address (path_name) ||
+      !check_string (path_name))
+    syscall_exit (f, -1);
+
+  struct dir *directory = open_dir_path (path_name);
+  f->eax = false;
+  if (directory != NULL)
+    {
+      current_thread->work_dir = directory;
+      f->eax = true;
+    }
 }
 
 static void
 syscall_mkdir (struct intr_frame *f, uint32_t *args, struct thread *current_thread)
 { 
-  // TODO
+
+  char *path_name = (char*) args[1];
+  if (!check_address (path_name) ||
+      !check_string (path_name))
+    syscall_exit (f, -1);
+
+  f->eax = filesys_create (path_name, 0, true);
+
 }
 
 static void
@@ -401,7 +421,9 @@ syscall_readdir (struct intr_frame *f, uint32_t *args, struct thread *current_th
 static void
 syscall_isdir (struct intr_frame *f, uint32_t *args, struct thread *current_thread)
 { 
+  int fd = (int) args[1];
   // TODO
+  
 }
 
 static void

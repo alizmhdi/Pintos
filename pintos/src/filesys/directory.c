@@ -77,9 +77,9 @@ get_next_part (char part[NAME_MAX + 1], const char** srcp)
 bool
 split_path_dir (char *path, char *last, struct dir **par)
 {
-  if(thread_current ()->work_dir == NULL || path[0] == '/')
+  if (thread_current ()->work_dir == NULL || path[0] == '/')
     *par = dir_open_root ();
-  else if(true) // TODO if inode is removed
+  else if (false) // TODO if inode is removed
     {
       *par = NULL;
       *last = '\0';
@@ -88,7 +88,7 @@ split_path_dir (char *path, char *last, struct dir **par)
   *par = dir_reopen (thread_current ()->work_dir);
   *last = '\0';
   char *current_path = path;
-  for(;;)
+  for (;;)
     {
       bool lookup_result = true;
       struct inode *inode_next;
@@ -154,7 +154,7 @@ open_dir_path (char *path)
       dir_close(par);
       return NULL;
     }
-  if (true) // TODO (if inode is removed)
+  if (false) // TODO (if inode is removed)
     {
       inode_close (dir_inode);
       dir_close (par);
@@ -302,7 +302,7 @@ dir_add (struct dir *dir, const char *name, block_sector_t inode_sector)
   /* Check that NAME is not in use. */
   if (lookup (dir, name, NULL, NULL))
     goto done;
-
+  
   /* Set OFS to offset of free slot.
      If there are no free slots, then it will be set to the
      current end-of-file.
