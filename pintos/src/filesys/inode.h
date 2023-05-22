@@ -23,4 +23,11 @@ struct inode_disk *get_inode_disk (const struct inode *);
 bool inode_get_removed (const struct inode *);
 struct lock *inode_lock(struct inode *);
 
+struct inode_disk *read_inode (const struct inode *);
+static bool disk_allocate (struct inode_disk *disk_inode, off_t length);
+static bool sector_allocate (block_sector_t *sector_idx);
+static bool indirect_allocate (block_sector_t sector_idx, size_t number_of_sectors);
+static bool disk_deallocate (struct inode *inode);
+static bool indirect_deallocate (block_sector_t sector_num, size_t number_of_sectors);
+
 #endif /* filesys/inode.h */
