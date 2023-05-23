@@ -46,4 +46,6 @@ void cache_flush (struct block *fs_device);
 
 void cache_shutdown (struct block *fs_device);
 
+size_t cache_count (int mode);
+
 #endif /* FILESYS_CACHE_H */

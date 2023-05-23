@@ -10,6 +10,7 @@
 #include "filesys/file.h"
 #include "filesys/filesys.h"
 #include "filesys/directory.h"
+#include "filesys/cache.h"
 #include "filesys/inode.h"
 #include "process.h"
 
@@ -32,6 +33,8 @@ static void syscall_mkdir(struct intr_frame *, uint32_t *, struct thread *);
 static void syscall_readdir(struct intr_frame *, uint32_t *, struct thread *);
 static void syscall_isdir(struct intr_frame *, uint32_t *, struct thread *);
 static void syscall_inumber(struct intr_frame *, uint32_t *, struct thread *);
+static void syscall_cache_stat(struct intr_frame *, uint32_t *, struct thread *);
+
 
 struct lock file_lock;
 
@@ -137,6 +140,8 @@ syscall_handler (struct intr_frame *f UNUSED)
   case SYS_INUMBER:
     syscall_inumber (f, args, current_thread);
     break;
+  case SYS_CACHE_STAT:
+    syscall_cache_stat (f, args, current_thread);
   default:
     break;
   }
@@ -432,6 +437,24 @@ syscall_inumber (struct intr_frame *f, uint32_t *args, struct thread *current_th
   // TODO
 }
 
+static void
+syscall_cache_stat (struct intr_frame *f, uint32_t *args, struct thread *current_thread)
+{
+  int flag = (int) args[1];
+  switch (flag)
+  {
+  case HIT:
+    f->eax = cache_count (HIT);
+    break;
+
+  case MISS:
+    f->eax = cache_count (MISS);
+    break;
+
+  default:
+    f->eax = -1;
+  }
+}
 
 
 
