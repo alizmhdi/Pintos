@@ -98,7 +98,7 @@ filesys_open (const char *name)
   split_path_dir (name, last , &dir);
 
   if (dir != NULL)
-    dir_lookup (dir, name, &inode);
+    dir_lookup (dir, last, &inode);
   dir_close (dir);
 
   if (inode == NULL)
@@ -109,8 +109,8 @@ filesys_open (const char *name)
     result = (struct file*) dir_open (inode);
     return result;
   }
-
-  return file_open (inode);
+  else 
+    return file_open (inode);
 }
 
 /* Deletes the file named NAME.
@@ -124,7 +124,7 @@ filesys_remove (const char *name)
   char last[NAME_MAX + 1];
   split_path_dir(name, last, &directory);
  
-  bool success = directory != NULL && dir_remove (directory, name);
+  bool success = directory != NULL && dir_remove (directory, last);
   dir_close (directory);
 
   return success;
