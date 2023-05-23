@@ -53,7 +53,7 @@ process_execute (const char *file_name)
 
   /* Add the new process to current thread's children elements. */
   list_push_back (&current_thread->children, &ps->elem);
-
+  ts_copy->work_dir = current_thread->work_dir;
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
   fn_copy = palloc_get_page (0);
@@ -119,7 +119,10 @@ start_process (void *ts)
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
   success = load (file_name, &if_.eip, &if_.esp);
-
+  if (ts_copy->work_dir != NULL)
+    current_thread->work_dir = dir_reopen (ts_copy->work_dir);
+  else 
+    current_thread->work_dir = dir_open_root ();
   /* If load failed, quit. */
   palloc_free_page (file_name);
   if (!success)
