@@ -50,4 +50,7 @@ int inumber (int fd);
 /* Homework 5, Part B. */
 void* sbrk (intptr_t increment);
 
+int cache_stat (uint32_t flag);
+void invalidate_cache (void);
+
 #endif /* lib/user/syscall.h */

@@ -34,8 +34,7 @@ static void syscall_readdir(struct intr_frame *, uint32_t *, struct thread *);
 static void syscall_isdir(struct intr_frame *, uint32_t *, struct thread *);
 static void syscall_inumber(struct intr_frame *, uint32_t *, struct thread *);
 static void syscall_cache_stat(struct intr_frame *, uint32_t *, struct thread *);
-
-
+static void syscall_invalidate_cache(struct intr_frame *, uint32_t *);
 
 void syscall_init (void)
 {

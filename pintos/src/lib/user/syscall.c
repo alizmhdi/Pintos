@@ -204,8 +204,8 @@ cache_stat (uint32_t flag)
   return syscall1 (SYS_CACHE_STAT, flag);
 }
 
-int
+void
 invalidate_cache (void)
 {
-  return syscall0 (SYS_INVALIDATE_CACHE);
+  syscall0 (SYS_INVALIDATE_CACHE);
 }

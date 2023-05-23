@@ -175,8 +175,12 @@ cache_count (int mode)
 void 
 cache_invalidate(void)
 {
+  lock_acquire (&cache_lock);
+  
   for (int i = 0; i < CACHE_SIZE; i++)
     {
       cache_blocks[i].is_valid = false;
     }
+  
+  lock_release (&cache_lock);
 }
