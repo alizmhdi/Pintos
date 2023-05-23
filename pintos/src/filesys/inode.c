@@ -144,12 +144,12 @@ inode_create (block_sector_t sector, off_t length, bool is_directory)
 static bool
 sector_allocate (block_sector_t *sector_idx)
 {
-  static char zeros[BLOCK_SECTOR_SIZE];
+  static char buffer[BLOCK_SECTOR_SIZE];
   if (free_map_allocate(1, sector_idx))
-    {
-      cache_write (fs_device, *sector_idx, zeros, 0, BLOCK_SECTOR_SIZE);
-      return true;
-    }
+  {
+    cache_write (fs_device, *sector_idx, buffer, 0, BLOCK_SECTOR_SIZE);
+    return true;
+  }
   return false;
 }
 
@@ -182,24 +182,25 @@ indirect_deallocate (block_sector_t sector_num, size_t number_of_sectors)
 static size_t
 dbindirect_allocate (struct inode_disk *disk_inode, size_t number_of_sectors)
 {
-  block_sector_t dblocks[INDIRECT_BLOCK];
-  cache_read (fs_device, disk_inode->double_indirect, &dblocks, 0, BLOCK_SECTOR_SIZE);
+  block_sector_t double_blocks[INDIRECT_BLOCK];
+  cache_read (fs_device, disk_inode->double_indirect, &double_blocks, 0, BLOCK_SECTOR_SIZE);
 
-  size_t chunk_size;
-  for (size_t i = 0; i < (size_t) DIV_ROUND_UP (number_of_sectors, INDIRECT_BLOCK); i++)
+  size_t max_sector = DIV_ROUND_UP (number_of_sectors, INDIRECT_BLOCK);
+  size_t chunk;
+  for (size_t i = 0; i < max_sector; i++)
   {
     if (number_of_sectors < INDIRECT_BLOCK)
-      chunk_size = number_of_sectors ;
+      chunk = number_of_sectors ;
     else
-      chunk_size = INDIRECT_BLOCK;
-    if (dblocks[i] == 0 && !sector_allocate (&dblocks[i]))
+      chunk = INDIRECT_BLOCK;
+    if (double_blocks[i] == 0 && !sector_allocate (&double_blocks[i]))
       return false;
-    if (!indirect_allocate (dblocks[i], chunk_size))
+    if (!indirect_allocate (double_blocks[i], chunk))
       return false;
-    number_of_sectors -= chunk_size;
+    number_of_sectors -= chunk;
   }
 
-  cache_write (fs_device, disk_inode->double_indirect, &dblocks, 0, BLOCK_SECTOR_SIZE);
+  cache_write (fs_device, disk_inode->double_indirect, &double_blocks, 0, BLOCK_SECTOR_SIZE);
   return number_of_sectors;
 }
 
