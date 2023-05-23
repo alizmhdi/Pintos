@@ -29,7 +29,7 @@ struct dir_entry
 bool
 dir_create (block_sector_t sector, size_t entry_cnt)
 {
-  if (! inode_create (sector, entry_cnt * sizeof (struct dir_entry), true))
+  if (!inode_create (sector, entry_cnt * sizeof (struct dir_entry), true))
     return false;
   
   struct inode *inode_dir = inode_open (sector);
@@ -88,6 +88,7 @@ split_path_dir (char *path, char *last, struct dir **par)
         {
           *par = NULL;
           *last = '\0';
+          dir_close (*par);
           return false;
         }
         *par = dir_reopen (thread_current ()->work_dir);
@@ -112,6 +113,7 @@ split_path_dir (char *path, char *last, struct dir **par)
         {
           *par = NULL;
           *last = '\0';
+          dir_close (*par);
           return false;
         }
       
@@ -119,6 +121,7 @@ split_path_dir (char *path, char *last, struct dir **par)
         {
           *par = NULL;
           *last = '\0';
+          dir_close (*par);
           return false;
         }
       
@@ -128,6 +131,7 @@ split_path_dir (char *path, char *last, struct dir **par)
             {
               *par = NULL;
               *last = '\0';
+              dir_close (*par);
               return false;
             }
           
@@ -136,6 +140,7 @@ split_path_dir (char *path, char *last, struct dir **par)
             {
               *par = NULL;
               *last = '\0';
+              dir_close (*par);
               return false;
             }
           dir_close (*par);
@@ -194,7 +199,7 @@ dir_open (struct inode *inode)
   if (inode != NULL && dir != NULL)
     {
       dir->inode = inode;
-      dir->pos = 0;
+      dir->pos = sizeof (struct dir_entry);;
       return dir;
     }
   else

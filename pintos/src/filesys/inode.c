@@ -496,7 +496,7 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
     }
     
     id->length = size + offset;
-    cache_write (fs_device, inode_get_inumber (inode), (void *) id, 0,BLOCK_SECTOR_SIZE);
+    cache_write (fs_device, inode_get_inumber (inode), (void *) id, 0, BLOCK_SECTOR_SIZE);
     free (id);
    }
   while (size > 0)

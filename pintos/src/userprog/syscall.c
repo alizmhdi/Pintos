@@ -477,7 +477,3 @@ syscall_cache_stat (struct intr_frame *f, uint32_t *args, struct thread *current
     f->eax = -1;
   }
 }
-
-
-
-
