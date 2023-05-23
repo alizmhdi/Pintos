@@ -36,11 +36,9 @@ static void syscall_inumber(struct intr_frame *, uint32_t *, struct thread *);
 static void syscall_cache_stat(struct intr_frame *, uint32_t *, struct thread *);
 
 
-// struct lock file_lock;
 
 void syscall_init (void)
 {
-  // lock_init (&file_lock);
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
 }
 
@@ -229,9 +227,7 @@ syscall_remove (struct intr_frame *f, uint32_t *args)
       !check_string (name))
     syscall_exit (f, -1);
 
-  // lock_acquire (&file_lock);
   f->eax = filesys_remove (name);
-  // lock_release (&file_lock);
 }
 
 static void
@@ -255,9 +251,7 @@ syscall_open (struct intr_frame *f, uint32_t *args, struct thread *current_threa
     return;
   }
 
-  // lock_acquire (&file_lock);
   current_thread->file_descriptors[fd] = filesys_open (name);
-  // lock_release (&file_lock);
 
   if (current_thread->file_descriptors[fd] == NULL)
   {
@@ -277,14 +271,12 @@ syscall_close (struct intr_frame *f, uint32_t *args, struct thread *current_thre
       fd < 3)
     syscall_exit (f, -1);
 
-  // lock_acquire (&file_lock);
   struct dir *directory = convert_file_to_dir (current_thread -> file_descriptors[fd]);
 
   if (directory == NULL)
     file_close (current_thread->file_descriptors[fd]);
   else 
     dir_close (directory);
-  // lock_release (&file_lock);
 
   current_thread->file_descriptors[fd] = NULL;
   f->eax = 1;
@@ -328,9 +320,7 @@ syscall_read (struct intr_frame *f, uint32_t *args, struct thread *current_threa
       fd == 2)
     syscall_exit (f, -1);
 
-  // lock_acquire (&file_lock);
   f->eax = file_read (current_thread->file_descriptors[fd], buffer, size);
-  // lock_release (&file_lock);
 }
 
 static void
@@ -344,9 +334,7 @@ syscall_filesize (struct intr_frame *f, uint32_t *args, struct thread *current_t
       fd == 2)
       syscall_exit (f, -1);
 
-  // lock_acquire (&file_lock);
   f->eax = file_length (current_thread->file_descriptors[fd]);
-  // lock_release (&file_lock);
 }
 
 static void
@@ -361,9 +349,7 @@ syscall_seek (struct intr_frame *f, uint32_t *args, struct thread *current_threa
       fd == 2)
       syscall_exit (f, -1);
 
-  // lock_acquire (&file_lock);
   file_seek (current_thread->file_descriptors[fd], location);
-  // lock_release (&file_lock);
 
   f->eax = 0;
 }
@@ -378,9 +364,7 @@ syscall_tell (struct intr_frame *f, uint32_t *args, struct thread *current_threa
       fd == 1 ||
       fd == 2)
       syscall_exit (f, -1);
-  // lock_acquire (&file_lock);
   f->eax = file_tell (current_thread->file_descriptors[fd]);
-  // lock_release (&file_lock);
 }
 
 static void
