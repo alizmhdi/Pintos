@@ -4,6 +4,7 @@
 #include <list.h>
 #include "filesys/filesys.h"
 #include "filesys/inode.h"
+#include "filesys/file.h"
 #include "threads/malloc.h"
 #include "threads/thread.h"
 
@@ -169,6 +170,17 @@ open_dir_path (char *path)
     }
 
   return dir_open (dir_inode);
+}
+
+struct dir* 
+convert_file_to_dir (struct file *file)
+{
+  if (file == NULL)
+    return NULL;
+  
+  struct inode *inode_file = file_get_inode (file);
+  
+  return ((inode_file == NULL || ! inode_isdir(inode_file)) ? NULL : ((struct dir *) file));
 }
 
 
