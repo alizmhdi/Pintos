@@ -210,12 +210,13 @@ disk_allocate (struct inode_disk *disk_inode, off_t length)
   if (length < 0)
     return false;
   size_t number_of_sectors = DIV_ROUND_UP (length, BLOCK_SECTOR_SIZE);
-  size_t i;
-  for (i = 0; i < MIN(DIRECT_BLOCK, number_of_sectors); i++)
+  for (size_t i = 0; i < MIN(DIRECT_BLOCK, number_of_sectors); i++)
+  {
     if (!disk_inode->direct[i] && !sector_allocate (&disk_inode->direct[i]))
       return false;
+    number_of_sectors --;
+  }
 
-  number_of_sectors -= i;
   if (number_of_sectors == 0)
     return true;
   
@@ -260,16 +261,20 @@ deallocate_dbindirects(struct inode_disk *disk_inode, size_t number_of_sectors)
   if (number_of_sectors > INDIRECT_BLOCK * INDIRECT_BLOCK)
     return false;
 
-  size_t i;
-  for (i = 0; i < (size_t) DIV_ROUND_UP (number_of_sectors, INDIRECT_BLOCK); i++)
+  size_t max_sector = DIV_ROUND_UP (number_of_sectors, INDIRECT_BLOCK);
+
+  for (size_t i = 0; i < max_sector; i++)
   {
     block_sector_t double_indirect_blocks[INDIRECT_BLOCK];
     cache_read (fs_device, blocks[i], &double_indirect_blocks, 0, BLOCK_SECTOR_SIZE);
-    size_t j;
-    for (j = 0; j < MIN(INDIRECT_BLOCK, number_of_sectors); j++)
+    
+    for (size_t j = 0; j < MIN(INDIRECT_BLOCK, number_of_sectors); j++)
+    {
       free_map_release (double_indirect_blocks[j], 1); 
+      number_of_sectors--;
+    }
     free_map_release (blocks[i], 1);
-    number_of_sectors -= j;
+    
   }
 
   free_map_release (disk_inode->double_indirect, 1);
