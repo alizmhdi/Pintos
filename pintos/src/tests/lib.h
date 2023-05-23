@@ -35,6 +35,14 @@ void fail (const char *, ...) PRINTF_FORMAT (1, 2) NO_RETURN;
           }                                     \
         while (0)
 
+#define ASSERT_CONDITION(SUCCESS, ...)                    \
+        do                                      \
+          {                                     \
+            if (!(SUCCESS))                     \
+              fail (__VA_ARGS__);               \
+          }                                     \
+        while (0)
+
 void shuffle (void *, size_t cnt, size_t size);
 
 void exec_children (const char *child_name, pid_t pids[], size_t child_cnt);
