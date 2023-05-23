@@ -170,3 +170,13 @@ cache_count (int mode)
   }
   lock_release(&stat_lock);
 }
+
+/* Invalidate all cache blocks. */
+void 
+cache_invalidate(void)
+{
+  for (int i = 0; i < CACHE_SIZE; i++)
+    {
+      cache_blocks[i].is_valid = false;
+    }
+}

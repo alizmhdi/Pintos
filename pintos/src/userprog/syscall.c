@@ -149,6 +149,10 @@ syscall_handler (struct intr_frame *f UNUSED)
     break;
   case SYS_CACHE_STAT:
     syscall_cache_stat (f, args, current_thread);
+    break;
+  case SYS_INVALIDATE_CACHE:
+    syscall_invalidate_cache (f, args);
+    break;
   default:
     break;
   }
@@ -476,4 +480,11 @@ syscall_cache_stat (struct intr_frame *f, uint32_t *args, struct thread *current
   default:
     f->eax = -1;
   }
+}
+
+static void
+syscall_invalidate_cache (struct intr_frame *f, uint32_t *args)
+{
+  cache_invalidate ();
+  f->eax = 1;
 }
