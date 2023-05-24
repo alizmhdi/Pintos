@@ -492,6 +492,6 @@ syscall_cache_stat (struct intr_frame *f, uint32_t *args, struct thread *current
 static void
 syscall_invalidate_cache (struct intr_frame *f, uint32_t *args)
 {
-  cache_invalidate ();
+  cache_invalidate (fs_device);
   f->eax = 1;
 }

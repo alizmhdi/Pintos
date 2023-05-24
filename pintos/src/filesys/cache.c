@@ -203,14 +203,7 @@ cache_count (int mode)
 
 /* Invalidate all cache blocks. */
 void 
-cache_invalidate(void)
+cache_invalidate(struct block *fs_device)
 {
-  lock_acquire (&cache_lock);
-  
-  for (int i = 0; i < CACHE_SIZE; i++)
-    {
-      cache_blocks[i].is_valid = false;
-    }
-  
-  lock_release (&cache_lock);
+  cache_shutdown(fs_device);
 }

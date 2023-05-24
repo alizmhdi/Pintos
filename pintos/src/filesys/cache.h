@@ -51,6 +51,6 @@ void cache_shutdown (struct block *fs_device);
 
 size_t cache_count (int mode);
 
-void cache_invalidate (void);
+void cache_invalidate (struct block *fs_device);
 
 #endif
