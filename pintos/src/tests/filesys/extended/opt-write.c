@@ -60,4 +60,7 @@ test_main (void)
 
   msg ("close \"%s\"", file_name);
   close (test_fd);
+
+  remove (file_name);
+
 }
