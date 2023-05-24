@@ -54,7 +54,7 @@ cache_init(void)
 /* Find cache block with current sector index, acquire the lock and return the block.
   If no blocks found, evict least recently used block from cache list, acquire its lock and return the block.*/
 struct cache_block *
-get_cache_block(struct block *fs_device, block_sector_t sector_idx)
+get_cache_block(struct block *fs_device, block_sector_t sector_idx, bool write_optimization)
 {
   lock_acquire(&cache_lock);
 
@@ -81,7 +81,11 @@ get_cache_block(struct block *fs_device, block_sector_t sector_idx)
   lock_acquire(&lru_block->block_lock);
 
   flush_block(fs_device, lru_block);
-  block_read(fs_device, sector_idx, lru_block->data);
+
+  /* When whole block is going to be written over, optimization speeds up cache block retrieval by skipping the block read. */
+  if (!write_optimization)
+    block_read(fs_device, sector_idx, lru_block->data);
+  
   lru_block->sector_index = sector_idx;
   lru_block->is_valid = true;
   list_push_back(&cache_list, &lru_block->elem);
@@ -98,7 +102,13 @@ cache_write(struct block *fs_device, block_sector_t sector_idx, void *source, of
   ASSERT(fs_device != NULL);
   ASSERT(offset + chunk_size <= BLOCK_SECTOR_SIZE);
 
-  struct cache_block *cache_block = get_cache_block(fs_device, sector_idx);
+  struct cache_block *cache_block;
+
+  if (offset == 0 && chunk_size >= BLOCK_SECTOR_SIZE)
+    cache_block = get_cache_block(fs_device, sector_idx, true);
+  else
+    cache_block = get_cache_block(fs_device, sector_idx, false);
+
   ASSERT(lock_held_by_current_thread(&cache_block->block_lock));
   ASSERT(cache_block->is_valid);
   memcpy(cache_block->data + offset, source, chunk_size);
@@ -113,7 +123,7 @@ cache_read(struct block *fs_device, block_sector_t sector_idx, void *destination
   ASSERT(fs_device != NULL);
   ASSERT(offset + chunk_size <= BLOCK_SECTOR_SIZE);
 
-  struct cache_block *cache_block = get_cache_block(fs_device, sector_idx);
+  struct cache_block *cache_block = get_cache_block(fs_device, sector_idx, false);
   ASSERT(lock_held_by_current_thread(&cache_block->block_lock));
   ASSERT(cache_block->is_valid);
 
