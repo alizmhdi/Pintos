@@ -31,7 +31,7 @@ test_main (void)
   CHECK ((test_fd = open (file_name)) > 1, 
     "open \"%s\"", file_name);
 
-  /* Write opt_write_test file of size BLOCK_SECTOR_SIZE * 200 */
+  /* Write file of size BLOCK_SECTOR_SIZE * 200 */
   random_bytes (buf, sizeof buf);
   CHECK (write (test_fd, buf, sizeof buf) == BUF_SIZE,
    "write %d bytes to \"%s\"", (int) BUF_SIZE, file_name);
@@ -44,12 +44,12 @@ test_main (void)
   long long base_disk_reads = cache_stat (READ);
   long long base_disk_writes = cache_stat (WRITE);
 
-  /* Write opt_write_test file of size BLOCK_SECTOR_SIZE * 200 */
+  /* Write file of size BLOCK_SECTOR_SIZE * 200 */
   random_bytes (buf, sizeof buf);
   CHECK (write (test_fd, buf, sizeof buf) == BUF_SIZE,
    "write %d bytes to \"%s\"", (int) BUF_SIZE, file_name);
 
-   /* Get new disk statistics */
+  /* Save new disk stats for comparison */
   long long new_disk_reads = cache_stat (READ);
   long long new_disk_writes = cache_stat (WRITE);
 
@@ -61,6 +61,7 @@ test_main (void)
   msg ("close \"%s\"", file_name);
   close (test_fd);
 
+  /* Remove the file now that we are done.*/
   remove (file_name);
 
 }

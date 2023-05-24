@@ -30,7 +30,7 @@ test_main (void)
     "open \"%s\"", file_name);
 
   /* Write file of size CACHE_NUM_ENTRIES * BLOCK_SECTOR_SIZE
-     to fill entire cold cache. */
+     to fill half of cold cache. The rest of the cache is left empty for the kernel to use. */
   random_bytes (buf, sizeof buf);
   CHECK (write (test_fd, buf, sizeof buf) == BUF_SIZE,
    "write %d bytes to \"%s\"", (int) BUF_SIZE, file_name);
@@ -54,7 +54,7 @@ test_main (void)
   CHECK (read (test_fd, buf, sizeof buf) == BUF_SIZE,
   "read %d bytes from \"%s\"", (int) BUF_SIZE, file_name);
 
-  /* Save baseline cache stats for comparison */
+  /* Save cold cache stats for comparison */
   long long cold_cache_misses = cache_stat (MISS) - base_cache_misses;
   long long cold_cache_hits = cache_stat (HIT) - base_cache_hits;
   msg ("get cold cache stats");
@@ -86,5 +86,7 @@ test_main (void)
   msg ("close \"%s\"", file_name);
   close (test_fd);
 
+  /* Remove the file now that we are done.*/
   remove (file_name);
+  
 }
