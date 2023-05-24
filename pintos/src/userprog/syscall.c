@@ -476,6 +476,14 @@ syscall_cache_stat (struct intr_frame *f, uint32_t *args, struct thread *current
     f->eax = cache_count (MISS);
     break;
 
+  case READ:
+    f->eax = cache_count (READ);
+    break;
+
+  case WRITE:
+    f->eax = cache_count (WRITE);
+    break;
+
   default:
     f->eax = -1;
   }

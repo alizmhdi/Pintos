@@ -11,6 +11,8 @@
 /* Defines used for updating cache stats. */
 #define HIT 1
 #define MISS 0
+#define READ 2
+#define WRITE 3
 
 
 typedef struct cache_block
@@ -31,7 +33,8 @@ bool cache_initialized;
 
 long long hit_count;
 long long miss_count;
-long long access_count;
+long long read_count;
+long long write_count;
 struct lock stat_lock;
 
 void cache_init (void);
