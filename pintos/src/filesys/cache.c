@@ -159,21 +159,26 @@ flush_block(struct block *fs_device, struct cache_block *cache_block)
 void 
 cache_flush(struct block *fs_device)
 {
+  lock_acquire (&cache_lock);
   for (int i = 0; i < CACHE_SIZE; i++)
   {
     flush_block (fs_device, &cache_blocks[i]);
   }
+  lock_release (&cache_lock);
+
 }
 
 /* Flush and invalidate all cache blocks.*/
 void 
 cache_shutdown(struct block *fs_device)
 {
+  lock_acquire (&cache_lock);
   for (int i = 0; i < CACHE_SIZE; i++)
   {
     flush_block (fs_device, &cache_blocks[i]);
     cache_blocks[i].is_valid = false;
   }
+  lock_release (&cache_lock);
 }
 
 /* To be used in cache stat syscalls. */

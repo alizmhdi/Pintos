@@ -20,7 +20,31 @@
 # بافرکش
 ## داده ساختار ها
 
+داده ساختار های استفاده شده همانند مستند طراحی پروژه هستند.
+
+
+```C
+#define CACHE_SIZE 64
+
+struct cache_block {
+    block_sector_t sector_index;
+    char data[BLOCK_SECTOR_SIZE];
+    bool valid;
+    bool dirty;
+    struct list_elem elem; 
+    struct lock block_lock;
+
+}
+
+struct cache_block cache_blocks[CACHE_SIZE];
+struct list cache_list;
+struct lock cache_lock;
+
+```
+علاوه بر این ها، تعدادی عدد برای `hit_count` و `miss_count` و تعداد read یا write نیز ذخیره می‌کنیم که در تست کردن کش به ما کمک می‌کنند.
+
 ## الگوریتم
+ما الگوریتم LRU را برای پیاده سازی انتخاب کرده بودیم. طبق الگوریتمی که در مستند طراحی آورده شد، هر بلوک کش را در یک لیست قرار می‌دهیم و در هر دسترسی بلوک را به ابتدای لیست می‌آوریم. اینگونه بلوک آخر همواره least-recently-used بوده و می‌توانیم در صورت نیاز ابتدا آنرا flush کنیم (اگر dirty بود آنرا در دیسک نوشته) و سپس آنرا به عنوان بلوک قابل استفاده به کرنل بدهیم.
 
 
 # فایل‌های قابل گسترش
