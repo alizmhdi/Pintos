@@ -8,7 +8,7 @@
 #include "tests/lib.h"
 #include "tests/main.h"
 
-#define FILE_SIZE 8196
+#define FILE_SIZE 8096
 #define BLOCK_SIZE 512
 
 /* from `cache.h` */
@@ -22,7 +22,7 @@ test_main (void)
   int res;
 
   res = create ("a", FILE_SIZE);
-  ASSERT_CONDITION (res > 0, "failed to create a file called 'a'.");
+  ASSERT_CONDITION (res > 0, "failed to create a file called a.");
   msg ("created file named 'a'.");
 
   int fd = open("a");
