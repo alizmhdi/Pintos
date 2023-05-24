@@ -54,9 +54,26 @@ struct inode
 ``` 
 
 ## الگوریتم
+در این بخش ما به صورت کلی دو عملی
+deallocate , allocate
+را پیاده سازی کردیم که هر کدام از بخش‌ها به سه زیر بخش مربوط به directها
+indirectها
+و
+ double indirectها
+ تقسیم می‌شود که function مربوط به هر کدام را می‌توانید در فایل inode.c مشاهده کنید.
 
 # زیرمسیرها
 ## داده ساختار ها
+```C
+struct thread {
+  ...
+  struct dir* work_dir; 
+}
+```
+همچنین فیلد is_dir در استراکت inode_disk نیز برای این بخش اضافه شده است.
+
+همچنین توابع `dir_add` و `dir_create` و `dir_lookup`
+
 
 ## الگوریتم
 
