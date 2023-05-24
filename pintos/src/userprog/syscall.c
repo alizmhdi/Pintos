@@ -425,10 +425,10 @@ syscall_readdir (struct intr_frame *f, uint32_t *args, struct thread *current_th
 { 
   int fd = (int) args[1];
   char* name = (char*) args[2];
-  if(strlen(name) > NAME_MAX)
+  if(strlen (name) > NAME_MAX)
     syscall_exit (f, -1);
   f->eax = false;
-  if (fd == 1 || ! check_fd(current_thread, fd))
+  if (fd == 1 || ! check_fd (current_thread, fd))
     return ;
   
   struct dir *dir = convert_file_to_dir (current_thread->file_descriptors[fd]);

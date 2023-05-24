@@ -88,7 +88,6 @@ split_path_dir (char *path, char *last, struct dir **par)
         {
           *par = NULL;
           *last = '\0';
-          dir_close (*par);
           return false;
         }
         *par = dir_reopen (thread_current ()->work_dir);
@@ -113,7 +112,6 @@ split_path_dir (char *path, char *last, struct dir **par)
         {
           *par = NULL;
           *last = '\0';
-          dir_close (*par);
           return false;
         }
       
@@ -121,7 +119,6 @@ split_path_dir (char *path, char *last, struct dir **par)
         {
           *par = NULL;
           *last = '\0';
-          dir_close (*par);
           return false;
         }
       
@@ -131,7 +128,6 @@ split_path_dir (char *path, char *last, struct dir **par)
             {
               *par = NULL;
               *last = '\0';
-              dir_close (*par);
               return false;
             }
           
@@ -140,7 +136,6 @@ split_path_dir (char *path, char *last, struct dir **par)
             {
               *par = NULL;
               *last = '\0';
-              dir_close (*par);
               return false;
             }
           dir_close (*par);
@@ -154,6 +149,9 @@ split_path_dir (char *path, char *last, struct dir **par)
 struct dir*
 open_dir_path (char *path) 
 {
+  if (path == NULL)
+    return NULL;
+  
   if (path[0] == '/' && path[1] == '\0')
     return dir_open_root ();
   
@@ -288,9 +286,9 @@ dir_lookup (const struct dir *dir, const char *name,
   ASSERT (dir != NULL);
   ASSERT (name != NULL);
 
-  if(strcmp(name, ".") == 0)
+  if(name[0] == '.' && name[1] == '\0')
     *inode = inode_reopen (dir->inode);
-  else if(strcmp(name, "..") == 0) 
+  else if(name[0] == '.' && name[1] == '.' && name[2] == '\0') 
     {
       inode_read_at (dir->inode, &e, sizeof e, 0);
       *inode = inode_open (e.inode_sector);
@@ -299,10 +297,29 @@ dir_lookup (const struct dir *dir, const char *name,
     *inode = inode_open (e.inode_sector);
   else
     *inode = NULL;
-
-  return *inode != NULL;
+  if (*inode == NULL)
+    return false;
+  return true;
 }
 
+bool 
+dir_add_dir (struct dir *dir, struct inode *inode_dir)
+{
+  struct dir_entry child;
+  child.in_use = false;
+  child.name[0] = '.';
+  child.name[1] = '.';
+  child.name[2] = '\0';
+  struct inode *dir_inode = dir_get_inode(dir);
+  child.inode_sector = inode_get_inumber (dir_inode);
+  int amount_written = inode_write_at (inode_dir, &child, sizeof child, 0);
+  if (amount_written != sizeof(child))
+    {
+      inode_close (inode_dir);
+      return false;
+    }
+  return true;
+}
 /* Adds a file named NAME to DIR, which must not already contain a
    file by that name.  The file's inode is in sector
    INODE_SECTOR.
@@ -335,18 +352,8 @@ dir_add (struct dir *dir, const char *name, block_sector_t inode_sector)
   bool is_dir = inode_isdir_disk (read_inode (inode_dir));
   if (is_dir)
     {
-      struct dir_entry child;
-      child.in_use = false;
-      child.name[0] = '.';
-      child.name[1] = '.';
-      child.name[2] = '\0';
-      child.inode_sector = inode_get_inumber (dir_get_inode (dir));
-      int amount_written = inode_write_at (inode_dir, &child, sizeof child, 0);
-      if (amount_written != sizeof(child))
-        {
-          inode_close (inode_dir);
-          return false;
-        }
+      if(!dir_add_dir (dir, inode_dir))
+        return false;
     }
     inode_close (inode_dir);  
   /* Set OFS to offset of free slot.
@@ -371,6 +378,7 @@ dir_add (struct dir *dir, const char *name, block_sector_t inode_sector)
  done:
   return success;
 }
+
 
 /* Removes any entry for NAME in DIR.
    Returns true if successful, false on failure,
@@ -401,6 +409,7 @@ dir_remove (struct dir *dir, const char *name)
     {
       struct dir *cur_dir = dir_open (inode);
       struct dir_entry ent;
+
       off_t offst;
       
       bool has_child = false;
@@ -452,6 +461,6 @@ dir_readdir (struct dir *dir, char name[NAME_MAX + 1])
           return true;
         }
     }
-  dir->pos = sizeof(struct dir_entry);
+  dir->pos = sizeof (struct dir_entry);
   return false;
 }
