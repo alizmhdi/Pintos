@@ -348,7 +348,7 @@ dir_add (struct dir *dir, const char *name, block_sector_t inode_sector)
           return false;
         }
     }
-  
+    inode_close (inode_dir);  
   /* Set OFS to offset of free slot.
      If there are no free slots, then it will be set to the
      current end-of-file.
