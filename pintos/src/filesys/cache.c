@@ -53,6 +53,8 @@ cache_init(void)
   lock_acquire (&stat_lock);
   miss_count = 0;
   hit_count = 0;
+  read_count = 0;
+  write_count = 0;
   lock_release (&stat_lock);
 
   cache_initialized = true;
