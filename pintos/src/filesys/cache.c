@@ -158,17 +158,18 @@ size_t
 cache_count (int mode)
 {
   lock_acquire(&stat_lock);
+  size_t result = 0;
   switch (mode)
-  {
-  case HIT:
-    return hit_count;
-    break;
-  
-  case MISS:
-    return miss_count;
-    break;
-  }
+    {
+      case HIT:
+        result = hit_count;
+        break;
+      case MISS:
+        result = miss_count;
+        break;
+    }
   lock_release(&stat_lock);
+  return result;
 }
 
 /* Invalidate all cache blocks. */
