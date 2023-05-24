@@ -16,6 +16,14 @@ stat_update (int mode)
   case MISS:
     miss_count++;
     break;
+  
+  case READ:
+    read_count++;
+    break;
+  
+  case WRITE:
+    write_count++;
+    break;
   }
   lock_release (&stat_lock);
 }
@@ -45,7 +53,8 @@ cache_init(void)
   lock_acquire (&stat_lock);
   miss_count = 0;
   hit_count = 0;
-  access_count = 0;
+  read_count = 0;
+  write_count = 0;
   lock_release (&stat_lock);
 
   cache_initialized = true;
@@ -84,8 +93,11 @@ get_cache_block(struct block *fs_device, block_sector_t sector_idx, bool write_o
 
   /* When whole block is going to be written over, optimization speeds up cache block retrieval by skipping the block read. */
   if (!write_optimization)
+  {
     block_read(fs_device, sector_idx, lru_block->data);
-  
+    stat_update(READ);
+  }
+
   lru_block->sector_index = sector_idx;
   lru_block->is_valid = true;
   list_push_back(&cache_list, &lru_block->elem);
@@ -137,6 +149,7 @@ flush_block(struct block *fs_device, struct cache_block *cache_block)
   if (cache_block->is_valid && cache_block->is_dirty)
   {
     block_write(fs_device, cache_block->sector_index, cache_block->data);
+    stat_update(WRITE);
   }
 
   cache_block->is_dirty = false;
@@ -168,7 +181,7 @@ size_t
 cache_count (int mode)
 {
   lock_acquire(&stat_lock);
-  size_t result = 0;
+  size_t result = -1;
   switch (mode)
     {
       case HIT:
@@ -176,6 +189,12 @@ cache_count (int mode)
         break;
       case MISS:
         result = miss_count;
+        break;
+      case READ:
+        result = read_count;
+        break;
+      case WRITE:
+        result = write_count;
         break;
     }
   lock_release(&stat_lock);
