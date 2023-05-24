@@ -22,9 +22,7 @@ struct inode_disk
   {
     off_t length;                       /* File size in bytes. */
     unsigned magic;                     /* Magic number. */
-
     bool is_dir;
-
     block_sector_t direct[DIRECT_BLOCK];         /* Direct blocks of inode. */
     block_sector_t indirect;            /* Indirect blocks of inode. */
     block_sector_t double_indirect;     /* Double indirect blocks of indoe. */
@@ -55,8 +53,7 @@ read_inode (const struct inode *inode)
 
 /* Returns the block device sector that contains byte offset POS
    within INODE.
-   Returns -1 if INODE does not contain data for a byte at offset
-   POS. */
+   */
 static block_sector_t
 byte_to_sector (const struct inode *inode, off_t pos)
 {
@@ -72,10 +69,10 @@ byte_to_sector (const struct inode *inode, off_t pos)
   }
 
   
-  off_t block_idx = pos / BLOCK_SECTOR_SIZE;
+  off_t block_index = pos / BLOCK_SECTOR_SIZE;
   if (pos < DIRECT_BLOCK * BLOCK_SECTOR_SIZE)
   {
-    result = id->direct[block_idx];
+    result = id->direct[block_index];
     free (id);
     return result;
   }
@@ -84,7 +81,7 @@ byte_to_sector (const struct inode *inode, off_t pos)
   {
     block_sector_t indirect_blocks[INDIRECT_BLOCK];
     cache_read (fs_device, id->indirect, &indirect_blocks, 0, BLOCK_SECTOR_SIZE);
-    result =  indirect_blocks[block_idx - DIRECT_BLOCK];
+    result =  indirect_blocks[block_index - DIRECT_BLOCK];
     free (id);
     return result;
   }
@@ -92,9 +89,9 @@ byte_to_sector (const struct inode *inode, off_t pos)
   {
     block_sector_t double_indirect_blocks[INDIRECT_BLOCK];
     cache_read (fs_device, id->double_indirect, &double_indirect_blocks, 0, BLOCK_SECTOR_SIZE);
-    off_t indirect_block_idx = (block_idx - (DIRECT_BLOCK + INDIRECT_BLOCK)) / INDIRECT_BLOCK;
-    cache_read (fs_device, double_indirect_blocks[indirect_block_idx], &double_indirect_blocks, 0, BLOCK_SECTOR_SIZE);
-    result = double_indirect_blocks[(block_idx - (DIRECT_BLOCK + INDIRECT_BLOCK)) % INDIRECT_BLOCK];
+    off_t indirect_block_index = (block_index - (DIRECT_BLOCK + INDIRECT_BLOCK)) / INDIRECT_BLOCK;
+    cache_read (fs_device, double_indirect_blocks[indirect_block_index], &double_indirect_blocks, 0, BLOCK_SECTOR_SIZE);
+    result = double_indirect_blocks[(block_index - (DIRECT_BLOCK + INDIRECT_BLOCK)) % INDIRECT_BLOCK];
     free (id);
     return result;
   }
@@ -131,11 +128,12 @@ inode_create (block_sector_t sector, off_t length, bool is_directory)
     disk_inode->length = length;
     disk_inode->is_dir = is_directory; 
     disk_inode->magic = INODE_MAGIC;
+    
     if (disk_allocate (disk_inode, length))
-      {
-        cache_write (fs_device, sector, disk_inode, 0, BLOCK_SECTOR_SIZE);
-        success = true;
-      }
+    {
+      cache_write (fs_device, sector, disk_inode, 0, BLOCK_SECTOR_SIZE);
+      success = true;
+    }
     free (disk_inode);
   }
   return success;
@@ -145,12 +143,11 @@ static bool
 sector_allocate (block_sector_t *sector_idx)
 {
   static char buffer[BLOCK_SECTOR_SIZE];
-  if (free_map_allocate(1, sector_idx))
-  {
-    cache_write (fs_device, *sector_idx, buffer, 0, BLOCK_SECTOR_SIZE);
-    return true;
-  }
-  return false;
+  if (!free_map_allocate(1, sector_idx))
+    return false;
+
+  cache_write (fs_device, *sector_idx, buffer, 0, BLOCK_SECTOR_SIZE);
+  return true;
 }
 
 
@@ -162,6 +159,7 @@ indirect_allocate(block_sector_t sector_idx, size_t number_of_sectors)
   for (size_t i = 0; i < MIN(INDIRECT_BLOCK, number_of_sectors); i++)
     if (indirect_blocks[i] == 0 && !sector_allocate (&indirect_blocks[i]))
       return false;
+      
   cache_write (fs_device, sector_idx, &indirect_blocks, 0, BLOCK_SECTOR_SIZE);
   return true;
 }
@@ -455,10 +453,8 @@ inode_read_at (struct inode *inode, void *buffer_, off_t size, off_t offset)
       if (chunk_size <= 0)
         break;
 
-      cache_read (fs_device, sector_idx, (void *)(buffer + bytes_read),
-                  sector_ofs, chunk_size);
+      cache_read (fs_device, sector_idx, (void *)(buffer + bytes_read), sector_ofs, chunk_size);
  
-
       /* Advance. */
       size -= chunk_size;
       offset += chunk_size;
