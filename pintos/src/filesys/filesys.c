@@ -55,8 +55,8 @@ filesys_create (const char *name, off_t initial_size, bool is_dir)
 
   if (is_dir)
   {
-    success = (split_path_dir(name, last, &dir)
-                  && strlen(last) > 0
+    success = (split_path_dir (name, last, &dir)
+                  && strlen (last) > 0
                   && dir != NULL
                   && free_map_allocate (1, &inode_sector)
                   && dir_create (inode_sector, 16)
@@ -64,8 +64,8 @@ filesys_create (const char *name, off_t initial_size, bool is_dir)
   }
   else 
   {
-    success = (split_path_dir(name, last, &dir)
-                  && strlen(last) > 0
+    success = (split_path_dir (name, last, &dir)
+                  && strlen (last) > 0
                   && dir != NULL
                   && free_map_allocate (1, &inode_sector)
                   && inode_create (inode_sector, initial_size, false)
@@ -104,13 +104,10 @@ filesys_open (const char *name)
   if (inode == NULL)
     return NULL;
 
-  if (inode_isdir (inode))
-  {
-    result = (struct file*) dir_open (inode);
-    return result;
-  }
-  else 
+  if(! inode_isdir (inode))
     return file_open (inode);
+    
+  return (struct file*) dir_open (inode);
 }
 
 /* Deletes the file named NAME.
@@ -122,7 +119,7 @@ filesys_remove (const char *name)
 {
   struct dir *directory;
   char last[NAME_MAX + 1];
-  split_path_dir(name, last, &directory);
+  split_path_dir (name, last, &directory);
  
   bool success = directory != NULL && dir_remove (directory, last);
   dir_close (directory);
