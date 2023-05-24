@@ -53,7 +53,7 @@ test_main (void)
   long long new_disk_reads = cache_stat (READ);
   long long new_disk_writes = cache_stat (WRITE);
 
-  /* Check that hit rate improved */
+  /* Check that writes are much more than reads. */
   CHECK (num_disk_writes >= 5 * num_disk_reads, 
     "old reads: %lld, old writes: %lld, new reads: %lld, new writes: %lld", 
   	base_disk_reads, base_disk_writes, new_disk_reads, new_disk_writes);
